@@ -1,0 +1,123 @@
+import {
+  SourceInputData,
+  SourceAnalysisResult,
+  GeneratedArticle,
+  FactCheckResult,
+  SimilarityResult,
+  Language
+} from '../types';
+
+const API_BASE = '/api';
+
+export function getStoredApiKey(): string {
+  return localStorage.getItem('manorama_gemini_key') || '';
+}
+
+export function setStoredApiKey(key: string): void {
+  localStorage.setItem('manorama_gemini_key', key.trim());
+}
+
+export function clearStoredApiKey(): void {
+  localStorage.removeItem('manorama_gemini_key');
+}
+
+function getHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  };
+  const key = getStoredApiKey();
+  if (key) {
+    headers['x-gemini-key'] = key;
+  }
+  return headers;
+}
+
+export async function fetchSystemStatus() {
+  const res = await fetch(`${API_BASE}/status`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch system status');
+  return res.json();
+}
+
+export async function analyzeSource(data: SourceInputData): Promise<{ data: SourceAnalysisResult; isDemo: boolean }> {
+  const res = await fetch(`${API_BASE}/analyze`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Failed to analyze source material');
+  }
+  return { data: body.data, isDemo: body.isDemo };
+}
+
+export async function generateArticle(
+  data: SourceInputData,
+  analysis?: SourceAnalysisResult
+): Promise<{ data: GeneratedArticle; isDemo: boolean }> {
+  const res = await fetch(`${API_BASE}/generate`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ ...data, analysis })
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Failed to generate news article');
+  }
+  return { data: body.data, isDemo: body.isDemo };
+}
+
+export async function checkFacts(
+  sourceContent: string,
+  articleText: string,
+  targetLanguage: Language
+): Promise<{ data: FactCheckResult; isDemo: boolean }> {
+  const res = await fetch(`${API_BASE}/fact-check`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ sourceContent, articleText, targetLanguage })
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Failed to verify facts with Source Fact Guard');
+  }
+  return { data: body.data, isDemo: body.isDemo };
+}
+
+export async function refineEditorial(
+  action: 'headline' | 'tone' | 'grammar' | 'shorten' | 'expand',
+  text: string,
+  targetLanguage: Language,
+  context?: string
+): Promise<{ refinedText: string; alternatives?: string[]; changeSummary: string; isDemo: boolean }> {
+  const res = await fetch(`${API_BASE}/refine`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ action, text, targetLanguage, context })
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Editorial refinement failed');
+  }
+  return { ...body.data, isDemo: body.isDemo };
+}
+
+export async function checkSimilarity(articleA: string, articleB: string): Promise<SimilarityResult> {
+  const res = await fetch(`${API_BASE}/similarity`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ articleA, articleB })
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Failed to calculate article similarity');
+  }
+  return body.data;
+}
