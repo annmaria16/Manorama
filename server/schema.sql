@@ -53,3 +53,4 @@ CREATE TABLE IF NOT EXISTS fact_checks (
   FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
   UNIQUE(story_id, language)
 );
+

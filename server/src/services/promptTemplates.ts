@@ -95,9 +95,10 @@ ${payload.content}
 ${analysisJson ? `EXTRACTED SOURCE INTELLIGENCE:\n${analysisJson}\n` : ''}
 
 CRITICAL JOURNALISTIC INTEGRITY RULES:
-1. Inverted pyramid lead: First paragraph must answer the key Who, What, Where, When.
-2. Absolutely DO NOT fabricate quotes, people, numbers, causes, or locations.
-3. If an explanation is not in the source, DO NOT invent one.
+1. HEADLINE MUST MATCH CONTENT: The generated headline and 3 alternatives MUST represent the true subject of the SOURCE MATERIAL. If a proposed working title contradicts or does not match the story content, ignore the working title and generate a new, highly accurate headline matching the source.
+2. Inverted pyramid lead: First paragraph must answer the key Who, What, Where, When.
+3. Absolutely DO NOT fabricate quotes, people, numbers, causes, or locations.
+4. If an explanation is not in the source, DO NOT invent one.
 4. Preserve all numbers, statistics, dates, and official names faithfully.
 5. Create 3 distinct alternative headlines (e.g. breaking style, concise broadsheet style, SEO/digital style).
 6. Provide a concise 2-sentence summary/standfirst.

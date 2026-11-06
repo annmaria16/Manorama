@@ -8,11 +8,80 @@ import {
 } from '../types.js';
 
 export class DynamicNlpEngine {
-  private splitSentences(text: string): string[] {
+  public cleanMarkdown(text: string): string {
     return text
+      .replace(/^#+\s*/gm, '') // remove markdown heading hashes
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // remove **bold**
+      .replace(/\*([^*]+)\*/g, '$1') // remove *italic*
+      .replace(/__([^_]+)__/g, '$1') // remove __bold__
+      .replace(/_([^_]+)_/g, '$1') // remove _italic_
+      .replace(/`([^`]+)`/g, '$1') // remove `code`
+      .replace(/^[-\u2022*]\s+/gm, '') // remove bullet points
+      .trim();
+  }
+
+  private splitSentences(text: string): string[] {
+    const cleaned = this.cleanMarkdown(text);
+    return cleaned
       .split(/(?<=[.!?\n])\s+/)
       .map(s => s.trim())
       .filter(s => s.length > 5);
+  }
+
+  public extractHeadlineFromContent(rawContent: string): string {
+    // 1. Look for explicit markdown headline at start of a line: # Headline
+    const headingMatch = rawContent.match(/^#+\s+([^\n\r]+)/m);
+    if (headingMatch && headingMatch[1].trim().length > 6) {
+      return this.cleanMarkdown(headingMatch[1].trim());
+    }
+
+    // 2. Otherwise inspect first line
+    const lines = rawContent.split(/[\r\n]+/).map(l => this.cleanMarkdown(l.trim())).filter(l => l.length > 6);
+    if (lines.length > 0) {
+      return lines[0];
+    }
+
+    const sentences = this.splitSentences(rawContent);
+    return sentences[0] || 'Official News Report';
+  }
+
+  public isTitleRelevantToContent(title: string | undefined, content: string): boolean {
+    if (!title || title.trim().length < 5) return false;
+    const cleanTitle = title.trim();
+
+    // Check language mismatch
+    const isMalayalamContent = /[\u0D00-\u0D7F]/.test(content);
+    const isHindiContent = /[\u0900-\u097F]/.test(content);
+    const isTamilContent = /[\u0B80-\u0BFF]/.test(content);
+    const isTeluguContent = /[\u0C00-\u0C7F]/.test(content);
+    const isNonEnglishContent = isMalayalamContent || isHindiContent || isTamilContent || isTeluguContent;
+
+    const isEnglishOnlyTitle = /^[a-zA-Z0-9\s.,'":;!?\-&]+$/.test(cleanTitle);
+
+    if (isEnglishOnlyTitle && isNonEnglishContent) {
+      // If content is in Malayalam/Indian script, an English title is almost certainly stale from a previous story
+      // unless words from title appear in content
+      const titleWords = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const contentLower = content.toLowerCase();
+      const hasAny = titleWords.some(w => contentLower.includes(w));
+      if (!hasAny) {
+        return false; // Mismatched stale title!
+      }
+    }
+
+    // Check keyword overlap for general content
+    const tokenize = (t: string) => t.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length > 3);
+    const titleTokens = tokenize(cleanTitle);
+    const contentTokens = new Set(tokenize(content));
+    
+    if (titleTokens.length >= 3) {
+      const matchCount = titleTokens.filter(t => contentTokens.has(t)).length;
+      if (matchCount === 0) {
+        return false; // Zero word overlap!
+      }
+    }
+
+    return true;
   }
 
   private extractQuotes(text: string): string[] {
@@ -112,14 +181,21 @@ export class DynamicNlpEngine {
     const sentences = this.splitSentences(text);
     const effectiveAnalysis = analysis || this.analyze(payload);
 
-    // Formulate a dynamic headline derived directly from the user's title or first sentence
-    let baseHeadline = payload.title?.trim() || '';
-    if (!baseHeadline || baseHeadline.length < 15) {
-      baseHeadline = sentences[0] || 'Official Statement and Development';
+    // 1. Detect if content has an embedded headline or if title is stale/mismatched
+    const contentHasHeading = /^#+\s+[^\n\r]+/m.test(payload.content);
+    const titleIsRelevant = this.isTitleRelevantToContent(payload.title, payload.content);
+
+    let baseHeadline = '';
+    if (contentHasHeading) {
+      baseHeadline = this.extractHeadlineFromContent(payload.content);
+    } else if (payload.title && titleIsRelevant) {
+      baseHeadline = this.cleanMarkdown(payload.title.trim());
+    } else {
+      baseHeadline = this.extractHeadlineFromContent(payload.content);
     }
 
     // Clean headline
-    baseHeadline = baseHeadline.replace(/[.\n\r]/g, '').trim();
+    baseHeadline = this.cleanMarkdown(baseHeadline.replace(/[.\n\r]/g, ' ')).trim();
 
     const keywords = this.extractKeywords(text);
     const primaryPlace = effectiveAnalysis.entities.places[0] || '';
@@ -128,10 +204,14 @@ export class DynamicNlpEngine {
     const primaryNumber = effectiveAnalysis.entities.numbersAndStats[0] || '';
     const lowerText = text.toLowerCase();
 
-    // Determine thematic context for localization
-    const isRainHoliday = lowerText.includes('rain') || lowerText.includes('holiday') || lowerText.includes('school') || lowerText.includes('flood') || lowerText.includes('collector');
-    const isHealthHospital = lowerText.includes('hospital') || lowerText.includes('medical') || lowerText.includes('health') || lowerText.includes('emergency') || lowerText.includes('doctor') || lowerText.includes('care');
-    const isTechSpace = lowerText.includes('space') || lowerText.includes('satellite') || lowerText.includes('launch') || lowerText.includes('mission') || lowerText.includes('technology');
+    // Language scripts
+    const isMalayalamScript = /[\u0D00-\u0D7F]/.test(text) || /[\u0D00-\u0D7F]/.test(baseHeadline);
+
+    // Determine thematic context for localization (English & Malayalam keywords)
+    const isRainHoliday = lowerText.includes('rain') || lowerText.includes('holiday') || lowerText.includes('school') || lowerText.includes('flood') || lowerText.includes('collector') || text.includes('മഴ') || text.includes('അവധി');
+    const isHealthHospital = lowerText.includes('hospital') || lowerText.includes('medical') || lowerText.includes('health') || lowerText.includes('emergency') || lowerText.includes('doctor') || lowerText.includes('care') || text.includes('ആശുപത്രി') || text.includes('ചികിത്സ');
+    const isTechSpace = lowerText.includes('space') || lowerText.includes('satellite') || lowerText.includes('launch') || lowerText.includes('mission') || text.includes('ചന്ദ്രയാൻ') || text.includes('ഐഎസ്ആർഒ');
+    const isAgriSolar = lowerText.includes('solar') || lowerText.includes('irrigation') || lowerText.includes('farmer') || lowerText.includes('agriculture') || text.includes('സൗരോർജ്ജ') || text.includes('ജലസേചന') || text.includes('കർഷക') || text.includes('കൃഷി');
 
     // Language-aware headline and body generators
     let localizedHeadline = baseHeadline;
@@ -146,8 +226,50 @@ export class DynamicNlpEngine {
       : 'Further administrative directives will be issued as the situation progresses.';
     let localizedSummary = sentences.slice(0, 2).join(' ') || localizedLead;
 
-    if (targetLang === 'ml') {
-      if (isRainHoliday) {
+    if (targetLang === 'en') {
+      if (isAgriSolar) {
+        localizedHeadline = 'Students Develop Solar-Powered Irrigation System to Assist Farmers';
+        localizedAlt1 = 'Green Tech Innovation: Solar-Powered Irrigation Device Engineered by Students';
+        localizedAlt2 = 'Agriculture Update: Renewable Farm Technology Built for Efficient Water Usage';
+        localizedAlt3 = 'Solar Farm Irrigation: Student Breakthrough...';
+        localizedLead = 'In a breakthrough innovation, students have developed a solar-powered irrigation system to help farmers optimize agricultural water use.';
+        localizedBody1 = 'The automated system delivers sustainable, cost-effective water distribution across farmland without relying on traditional grid electricity.';
+        localizedBody2 = 'Agricultural experts and district officials commended the students for addressing critical farm challenges through renewable technology.';
+        localizedClosing = 'Pilot deployments are scheduled across local agricultural societies in the upcoming season.';
+        localizedSummary = 'Students have developed a solar-powered irrigation system to assist farmers with sustainable agricultural water management.';
+      } else if (isRainHoliday && isMalayalamScript) {
+        localizedHeadline = `${primaryPlace ? primaryPlace + ' District' : 'District Administration'} Declares School Holiday Due to Heavy Rain`;
+        localizedAlt1 = `Breaking: Torrential Rains Prompt School Closures in ${primaryPlace || 'District'}`;
+        localizedAlt2 = `${primaryPerson || 'Administration'}: Precautionary Measures & Relief Camps Mobilized`;
+        localizedAlt3 = `Heavy Rain Alert: Schools Closed...`;
+        localizedLead = `The district administration has declared a holiday for all educational institutions following intense rainfall and flood warnings.`;
+        localizedBody1 = `Relief teams have been deployed to vulnerable regions as water levels in major rivers continue to rise.`;
+        localizedBody2 = `Control rooms have been established to provide 24-hour emergency assistance to affected residents.`;
+        localizedClosing = `Residents have been urged to stay alert until the meteorological warnings are lifted.`;
+        localizedSummary = `School closures and emergency measures announced following heavy downpours.`;
+      } else if (isHealthHospital && isMalayalamScript) {
+        localizedHeadline = `${primaryPlace ? primaryPlace + ' Medical College' : 'Hospital'} Inaugurates State-of-the-Art Emergency Care Facility`;
+        localizedAlt1 = `Healthcare Expansion: Advanced Emergency & Trauma Unit Dedicated to the Public`;
+        localizedAlt2 = `Specialized Medical Care: New Critical Care Infrastructure Operational`;
+        localizedAlt3 = `New Emergency Wing Inaugurated...`;
+        localizedLead = `A modern, advanced emergency healthcare unit has been dedicated to the public to provide rapid critical care response.`;
+        localizedBody1 = `The new facility is equipped with modern life-support technology and a dedicated team of trauma care specialists.`;
+        localizedBody2 = `The development represents a major step forward in expanding public healthcare access.`;
+        localizedClosing = `Further phases of the medical complex expansion are slated to commence soon.`;
+        localizedSummary = `Modern emergency care unit inaugurated to enhance critical healthcare access.`;
+      }
+    } else if (targetLang === 'ml') {
+      if (isAgriSolar) {
+        localizedHeadline = baseHeadline || 'കർഷകർക്ക് സഹായമായി സൗരോർജ്ജത്തിൽ പ്രവർത്തിക്കുന്ന ജലസേചന സംവിധാനം വികസിപ്പിച്ച് വിദ്യാർത്ഥികൾ';
+        localizedAlt1 = `ബ്രേക്കിംഗ്: കർഷകർക്ക് കൈത്താങ്ങായി വിദ്യാർത്ഥികളുടെ സൗരോർജ്ജ ജലസേചന ഉപകരണം`;
+        localizedAlt2 = `കാർഷിക നവീകരണം: സൗരോർജ്ജത്തിൽ പ്രവർത്തിക്കുന്ന ജലസേചന യൂണിറ്റ് വിജയകരം`;
+        localizedAlt3 = `സൗരോർജ്ജ ജലസേചനം: വിദ്യാർത്ഥികളുടെ വിജയം...`;
+        localizedLead = `പ്രത്യേക ലേഖകൻ: ${sentences[0] || 'കർഷകർക്ക് സഹായമായി സൗരോർജ്ജത്തിൽ പ്രവർത്തിക്കുന്ന ജലസേചന സംവിധാനം വിദ്യാർത്ഥികൾ വികസിപ്പിച്ചു.'}`;
+        localizedBody1 = `${sentences[1] || 'കൃഷിയിടങ്ങളിൽ വെള്ളം കാര്യക്ഷമമായി ഉപയോഗിക്കാൻ സഹായിക്കുന്നതാണ് ഈ പുതിയ സാങ്കേതികവിദ്യ.'}`;
+        localizedBody2 = `${sentences[2] || 'പരമ്പരാഗത വൈദ്യുതിയെ ആശ്രയിക്കാതെ പ്രവർത്തിക്കാമെന്നതാണ് ഇതിന്റെ പ്രധാന സവിശേഷത.'}`;
+        localizedClosing = 'കാർഷിക മേഖലയിൽ വലിയ മാറ്റങ്ങൾക്ക് വഴിയൊരുക്കുന്ന ഈ പദ്ധതിക്ക് വിദഗ്ധരുടെ അഭിനന്ദനം ലഭിച്ചു.';
+        localizedSummary = baseHeadline;
+      } else if (isRainHoliday) {
         localizedHeadline = `${primaryPlace ? primaryPlace + 'യിൽ ' : ''}ശക്തമായ മഴ: ${primaryDate ? primaryDate + ' ' : ''}വിദ്യാഭ്യാസ സ്ഥാപനങ്ങൾക്ക് അവധി`;
         localizedAlt1 = `ബ്രേക്കിംഗ്: ${primaryPlace || 'ജില്ലയിൽ'} കനത്ത മഴ, സ്കൂളുകൾക്ക് അവധി പ്രഖ്യാപിച്ചു`;
         localizedAlt2 = `${primaryPerson || 'കളക്ടറുടെ ഉത്തരവ്'}: ദുരിതാശ്വാസ ക്യാമ്പുകൾ സജ്ജം, ജാഗ്രതാ നിർദേശം`;
@@ -189,7 +311,17 @@ export class DynamicNlpEngine {
         localizedSummary = sentences.slice(0, 2).join(' ') || localizedLead;
       }
     } else if (targetLang === 'hi') {
-      if (isRainHoliday) {
+      if (isAgriSolar) {
+        localizedHeadline = 'किसानों की मदद के लिए छात्रों ने विकसित किया सौर ऊर्जा से चलने वाला सिंचाई तंत्र';
+        localizedAlt1 = `कृषि नवाचार: सौर ऊर्जा से संचालित सिंचाई प्रणाली छात्रों द्वारा विकसित`;
+        localizedAlt2 = `जल संरक्षण: खेतों में पानी की बचत के लिए नई सौर तकनीक`;
+        localizedAlt3 = `सौर सिंचाई प्रणाली: छात्रों की उपलब्धि...`;
+        localizedLead = `विशेष संवाददाता: छात्रों ने किसानों की मदद और जल संरक्षण के उद्देश्य से सौर ऊर्जा से चलने वाली आधुनिक सिंचाई प्रणाली तैयार की है।`;
+        localizedBody1 = `यह स्वचालित प्रणाली पारंपरिक बिजली पर निर्भर हुए बिना खेतों में समान रूप से पानी वितरित करने में सक्षम है।`;
+        localizedBody2 = `कृषि विशेषज्ञों ने छात्रों के इस नवाचार की सराहना करते हुए इसे किसानों के लिए बेहद उपयोगी बताया है।`;
+        localizedClosing = 'आगामी कृषि मौसम में इसे स्थानीय स्तर पर पायलट प्रोजेक्ट के रूप में लागू किया जाएगा।';
+        localizedSummary = 'छात्रों ने खेतों में जल प्रबंधन को आसान बनाने के लिए सौर ऊर्जा आधारित सिंचाई तकनीक विकसित की है।';
+      } else if (isRainHoliday) {
         localizedHeadline = `${primaryPlace ? primaryPlace + ' में ' : ''}भारी बारिश: ${primaryDate ? primaryDate + ' को ' : ''}स्कूलों में छुट्टी घोषित`;
         localizedAlt1 = `ब्रेकिंग: ${primaryPlace || 'क्षेत्र'} में मूसलाधार बारिश के चलते स्कूल बंद`;
         localizedAlt2 = `${primaryPerson || 'प्रशासन'}: सुरक्षा के पुख्ता इंतजाम, नियंत्रण कक्ष स्थापित`;
@@ -231,7 +363,17 @@ export class DynamicNlpEngine {
         localizedSummary = sentences.slice(0, 2).join(' ') || localizedLead;
       }
     } else if (targetLang === 'ta') {
-      if (isRainHoliday) {
+      if (isAgriSolar) {
+        localizedHeadline = 'விவசாயிகளுக்கு உதவும் வகையில் மாணவர்கள் உருவாக்கிய சூரியசக்தி பாசன முறை';
+        localizedAlt1 = `புதிய கண்டுபிடிப்பு: மாணவர்களின் சூரியசக்தி தானியங்கி பாசன கருவி`;
+        localizedAlt2 = `விவசாயத்துறை: குறைந்த செலவில் சூரியசக்தி மூலம் நீர் மேலாண்மை`;
+        localizedAlt3 = `சூரியசக்தி பாசனம்: மாணவர்களின் சாதனை...`;
+        localizedLead = `செய்திப்பிரிவு: விவசாயிகளுக்கு பாசன நீரை திறம்பட பயன்படுத்த உதவும் வகையில் மாணவர்கள் சூரியசக்தி பாசன அமைப்பை வெற்றிகரமாக உருவாக்கியுள்ளனர்.`;
+        localizedBody1 = `மின்சார தேவையின்றி சூரிய ஒளியில் இயங்கும் இந்த சாதனம் விவசாயிகளுக்கு பெரும் உதவியாக இருக்கும்.`;
+        localizedBody2 = `விவசாய வல்லுநர்கள் இந்த புதிய தொழில்நுட்பத்திற்கு பாராட்டு தெரிவித்துள்ளனர்.`;
+        localizedClosing = 'விரைவில் இந்த முறை களப்பயன்பாட்டிற்கு கொண்டுவரப்படும் என தெரிவிக்கப்பட்டுள்ளது.';
+        localizedSummary = 'விவசாயிகளின் நலனுக்காக மாணவர்கள் உருவாக்கிய சூரியசக்தி பாசன கருவி வரவேற்பை பெற்றுள்ளது.';
+      } else if (isRainHoliday) {
         localizedHeadline = `${primaryPlace ? primaryPlace + 'வில் ' : ''}கனமழை: ${primaryDate ? primaryDate + ' ' : ''}பள்ளிகளுக்கு விடுமுறை`;
         localizedAlt1 = `பிரேக்கிங்: தொடர்மழை எதிரொலி - பள்ளிகளுக்கு விடுமுறை அறிவிப்பு`;
         localizedAlt2 = `${primaryPerson || 'மாவட்ட நிர்வாகம்'}: தீவிர முன்னெச்சரிக்கை நடவடிக்கைகள்`;
@@ -273,7 +415,17 @@ export class DynamicNlpEngine {
         localizedSummary = sentences.slice(0, 2).join(' ') || localizedLead;
       }
     } else if (targetLang === 'te') {
-      if (isRainHoliday) {
+      if (isAgriSolar) {
+        localizedHeadline = 'రైతులకు సాయంగా విద్యార్థులు అభివృద్ధి చేసిన సౌరశక్తి సాగునీటి వ్యవస్థ';
+        localizedAlt1 = `సాంకేతిక ముందడుగు: విద్యార్థుల రూపకల్పనలో సౌరశక్తి ఆధారిత సాగునీటి పంపు`;
+        localizedAlt2 = `వ్యవసాయ రంగం: తక్కువ ఖర్చుతో నీటి సద్వినియోగానికి సరికొత్త మార్గం`;
+        localizedAlt3 = `సౌరశక్తి సాగునీరు: విద్యార్థుల విజయం...`;
+        localizedLead = `ప్రత్యేక ప్రతినిధి: రైతులకు సాగునీటి నిర్వహణలో తోడ్పాటు అందించేందుకు విద్యార్థులు సౌరశక్తి ఆధారిత సాగునీటి వ్యవస్థను రూపొందించారు.`;
+        localizedBody1 = `సాంప్రదాయ విద్యుత్ అవసరం లేకుండా వ్యవసాయ పొలాలకు సమర్థవంతంగా నీరందించడం ఈ పరికరం ప్రత్యేకత.`;
+        localizedBody2 = `ఈ వినూత్న ప్రయోగాన్ని వ్యవసాయ నిపుణులు మరియు అధికారులు ప్రత్యేకంగా అభినందించారు.`;
+        localizedClosing = 'రానున్న కాలంలో దీనిని విస్తృతంగా అందుబాటులోకి తెచ్చేందుకు సన్నాహాలు చేస్తున్నారు.';
+        localizedSummary = 'రైతుల సాగునీటి సమస్య పరిష్కారానికి విద్యార్థులు సౌరశక్తి వ్యవస్థను ఆవిష్కరించారు.';
+      } else if (isRainHoliday) {
         localizedHeadline = `${primaryPlace ? primaryPlace + 'లో ' : ''}భారీ వర్షాలు: ${primaryDate ? primaryDate + 'న ' : ''}పాఠశాలలకు సెలవు`;
         localizedAlt1 = `బ్రేకింగ్: భారీ వర్షాల నేపథ్యంలో పాఠశాలలకు ప్రభుత్వం సెలవు ప్రకటించింది`;
         localizedAlt2 = `${primaryPerson || 'జిల్లా యంత్రాంగం'}: అప్రమత్తమైన అధికార యంత్రాంగం`;

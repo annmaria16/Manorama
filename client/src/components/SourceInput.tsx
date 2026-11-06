@@ -46,6 +46,53 @@ export const SourceInput: React.FC<SourceInputProps> = ({
     }
   };
 
+  const handleClearWorkspace = () => {
+    onChange({
+      title: '',
+      sourceType: 'transcript',
+      sourceLanguage: 'English',
+      articleStyle: 'standard',
+      content: '',
+      editorialInstructions: '',
+      targetLanguages: ['en', 'ml', 'hi', 'ta', 'te']
+    });
+  };
+
+  const handleContentChange = (newContent: string) => {
+    // 1. If content starts with markdown heading (# Headline), auto-sync to title
+    const headingMatch = newContent.match(/^#+\s+([^\n\r]+)/m);
+    let updatedTitle = data.title;
+
+    if (headingMatch && headingMatch[1].trim()) {
+      updatedTitle = headingMatch[1].replace(/^[#\s*_-]+/, '').replace(/[*_~`]/g, '').trim();
+    } else if (!data.title || SAMPLE_STORIES.some(s => s.data.title === data.title)) {
+      // If title is empty or is an orphaned sample title, auto-extract the first non-empty line
+      const firstLine = newContent.split(/[\r\n]+/)[0]?.replace(/^[#\s*_-]+/, '').replace(/[*_~`]/g, '').trim();
+      if (firstLine && firstLine.length > 8 && firstLine.length < 160) {
+        updatedTitle = firstLine;
+      }
+    }
+
+    // 2. Auto-detect source language if Indian script is present
+    let updatedSourceLanguage = data.sourceLanguage;
+    if (/[\u0D00-\u0D7F]/.test(newContent) && (!data.sourceLanguage || data.sourceLanguage.toLowerCase() === 'english')) {
+      updatedSourceLanguage = 'Malayalam';
+    } else if (/[\u0900-\u097F]/.test(newContent) && (!data.sourceLanguage || data.sourceLanguage.toLowerCase() === 'english')) {
+      updatedSourceLanguage = 'Hindi';
+    } else if (/[\u0B80-\u0BFF]/.test(newContent) && (!data.sourceLanguage || data.sourceLanguage.toLowerCase() === 'english')) {
+      updatedSourceLanguage = 'Tamil';
+    } else if (/[\u0C00-\u0C7F]/.test(newContent) && (!data.sourceLanguage || data.sourceLanguage.toLowerCase() === 'english')) {
+      updatedSourceLanguage = 'Telugu';
+    }
+
+    onChange({
+      ...data,
+      content: newContent,
+      title: updatedTitle,
+      sourceLanguage: updatedSourceLanguage
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Preload Sample Bar */}
@@ -59,7 +106,7 @@ export const SourceInput: React.FC<SourceInputProps> = ({
             Real newsroom interview transcripts & notes
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           {SAMPLE_STORIES.map(s => (
             <button
               key={s.id}
@@ -73,6 +120,17 @@ export const SourceInput: React.FC<SourceInputProps> = ({
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleClearWorkspace}
+            className="text-left px-3.5 py-2.5 text-xs font-bold bg-amber-50/70 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-800 transition flex items-center justify-between"
+            title="Start with a blank workspace"
+          >
+            <span>+ Blank Workspace</span>
+            <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-white text-amber-800 border border-amber-300">
+              Clear
+            </span>
+          </button>
         </div>
       </div>
 
@@ -123,16 +181,29 @@ export const SourceInput: React.FC<SourceInputProps> = ({
         {/* Configurations: Title, Source Lang, Style */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-3">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Source Title / Working Headline <span className="text-slate-400 font-normal">(Optional)</span>
-            </label>
-            <input
-              type="text"
-              value={data.title}
-              onChange={e => onChange({ ...data, title: e.target.value })}
-              placeholder="e.g. Exclusive Interview with ISRO Chairman S. Somanath on Moon Sample Return"
-              className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-red-500 transition font-medium"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Source Title / Working Headline <span className="text-slate-400 font-normal">(Optional — auto-updates from content)</span>
+              </label>
+              {data.title && (
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...data, title: '' })}
+                  className="text-[11px] text-red-600 hover:text-red-800 font-bold transition"
+                >
+                  Clear Title (Auto-Derive)
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={data.title}
+                onChange={e => onChange({ ...data, title: e.target.value })}
+                placeholder="Leave blank to auto-detect headline from content..."
+                className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-red-500 transition font-medium"
+              />
+            </div>
           </div>
 
           <div>
@@ -205,7 +276,7 @@ export const SourceInput: React.FC<SourceInputProps> = ({
           <textarea
             rows={10}
             value={data.content}
-            onChange={e => onChange({ ...data, content: e.target.value })}
+            onChange={e => handleContentChange(e.target.value)}
             placeholder="Paste your raw interview transcript, reporter shorthand, draft article, or news brief here..."
             className={`w-full p-4 text-sm font-mono border rounded-xl focus:outline-hidden transition leading-relaxed ${
               isTooShort
