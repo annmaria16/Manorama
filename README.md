@@ -1,225 +1,89 @@
 # Manorama AI Desk (മലയാള മനോരമ AI ഡെസ്ക്)
-### Intelligent Multilingual Newsroom Content Transformation Studio
+### Intelligent Multilingual Newsroom Content Transformation Studio (5-Language Pipeline)
 
-> **Project Identity:** **Manorama AI Desk**  
+> **Official Logo:** Integrated using Image (3) (`manorama_ai_desk_logo.png`) as the official brand identity.  
+> **Design References:** Inspired by Manorama Online Desktop (References 1 & 2) and Onmanorama Mobile App (References 1 & 4).  
 > **Tagline:** *From raw information to publication-ready journalism.*  
 > **Assessment Notice:** *Independent software engineer intern assessment prototype built for Malayala Manorama evaluation. This is not an official company product or endorsement.*
 
 ---
 
-## 1. Project Overview
+## 1. Project Overview & Major Architectural Enhancement
 
-**Manorama AI Desk** is a full-stack newsroom content transformation studio designed for modern digital and print journalism. It accepts unstructured, high-volume raw materials—such as raw interview transcripts, reporter shorthand notes, rough drafts, and wire agency briefs—and automatically analyzes, verifies, and localizes them into publication-ready news stories.
+**Manorama AI Desk** is an end-to-end editorial intelligence platform designed for modern digital, broadcast, and print journalism. 
 
-Rather than performing simple literal translation or summarisation, Manorama AI Desk implements an **end-to-end editorial intelligence pipeline**:
-1. **Source Understanding:** Deep linguistic parsing of source facts, quotes, attributions, numbers, and dates.
-2. **5Ws + 1H Extraction:** Structures core breaking facts (Who, What, When, Where, Why, How).
-3. **Journalistic News Structuring:** Implements the inverted-pyramid lead, logical paragraph progression, and standfirst summaries.
-4. **Target Language Localization:** Generates native, publication-grade **Malayalam (`ml`)**, **English (`en`)**, or **Hindi (`hi`)** without mechanical machine-translation artifacts.
-5. **Source Fact Guard:** Rigorous factual cross-examination verifying names, places, numbers, and quotes against original source material.
-6. **Live Multi-Medium Publication Previews:** Real-time previews across TV broadcast (with live scrolling ticker and lower-third graphics), digital websites (Manorama Online & Onmanorama), and print broadsheets (Malayala Manorama).
-7. **Offline Standalone HTML Export:** Generates completely self-contained `.html` files containing embedded styling, zero external CDN dependencies, and native UTF-8 Unicode support.
+### 🌟 Core Architectural Capability: Automatic 5-Language Generation
+A single input (interview transcript, reporter notes, rough draft, or news brief) automatically generates **five separate, complete, publication-ready journalistic news articles**:
+1. **English** (`en`) — Onmanorama style, inverted-pyramid lead, crisp newsroom prose.
+2. **Malayalam** (`ml`) — Malayala Manorama / Manorama Online style with native reporting verbs and authentic typography.
+3. **Hindi** (`hi`) — National broadsheet journalism style.
+4. **Tamil** (`ta`) — Regional newsroom conventions and accurate Tamil script transliteration.
+5. **Telugu** (`te`) — Formal broadsheet news vocabulary and Telugu script transliteration.
 
----
-
-## 2. Technology Stack & Architecture
-
-### Frontend (`/client`)
-- **Framework:** React 19 + TypeScript
-- **Build Tool:** Vite 6
-- **Styling:** Tailwind CSS 3.4
-- **Icons:** Lucide React
-- **Typography:** Google Fonts (`Anek Malayalam`, `Noto Serif Malayalam`, `Inter`, `Merriweather`)
-- **Key Capabilities:**
-  - Dynamic 6-stage workflow stepper.
-  - Live character, word, and reading-time metrics.
-  - Undo/Redo state stack for editorial sub-editing.
-  - TV Broadcast preview with animated marquee ticker tape.
-  - Responsive multi-device layout.
-
-### Backend (`/server`)
-- **Runtime:** Node.js v24 (ES Modules)
-- **Framework:** Express 4
-- **Language:** TypeScript 5 with `tsx` runtime execution
-- **Validation:** Zod 3 schema enforcement for all incoming payloads
-- **Security:** Strict CORS, sanitized inputs, server-side API key isolation (`.env` never exposed to client)
-- **Testing:** Node.js native test runner (`node:test`, `node:assert`)
-
-### AI & NLP Engine
-- **Model:** Google Gemini API (`gemini-2.5-flash` / `gemini-1.5-flash`)
-- **API Architecture:** Clean abstraction layer (`AiService`) with direct REST JSON schema enforcement (`responseMimeType: "application/json"`).
-- **Dual Operating Modes:**
-  1. **Live Gemini AI Mode:** Connects to Google Gemini API when `GEMINI_API_KEY` is provided in `server/.env` or via the in-app AI Settings modal.
-  2. **Deterministic Demo Mode:** Activated when no API key is configured. Employs curated, high-fidelity sample datasets to guarantee complete testing and demonstration without external dependencies.
-- **NLP / Similarity Algorithm:** Multilingual Cosine TF-IDF vectorizer with Malayalam (`\u0D00-\u0D7F`) Unicode character-boundary preservation.
+**Key Journalistic Principles:**
+- All 5 editions are generated from the **same original source material** (no daisy-chain translation).
+- If one language generation encounters an issue, successfully generated languages are preserved, and only the failed language can be retried independently.
+- Independent editing and Source Fact Guard auditing for each language edition.
+- Side-by-side **5-Language Comparison View** ensuring narrative consistency.
 
 ---
 
-## 3. Newsroom Workflow Stages
+## 2. Multi-Medium Publication Previews
 
-```
-[Raw Source Material]
-  (Transcripts / Notes / Drafts / Briefs)
-           │
-           ▼
-[Stage 1: Source Material Workspace]
-  - Type, Language, Target Language, Style, Editorial Notes
-           │
-           ▼
-[Stage 2: Source-to-Story Intelligence]
-  - 5Ws + 1H Extraction (Who, What, When, Where, Why, How)
-  - Named Entities (People, Places, Organizations, Dates, Numbers)
-  - Direct Quotation Preservation & Unclear Information Warning
-           │
-           ▼
-[Stage 3 & 4: AI News Generation & Multilingual Localization]
-  - Inverted Pyramid Lead, 3 Alternative Headlines, Standfirst, Paragraphs
-  - Native Malayalam / English Newsroom Conventions
-           │
-           ▼
-[Stage 5: Source Fact Guard]
-  - Entity-by-entity cross-examination against original source
-  - Fidelity Score (0-100%) & Status Badges (Supported, Needs Review, Unsupported)
-           │
-           ▼
-[Stage 6: Editorial Workspace]
-  - Live editing, headline meter, paragraph reordering, AI quick polish chips
-  - Priority A: Headline Studio & Duplicate Story Detection
-           │
-           ▼
-[Stage 7: Multi-Medium Publication Preview]
-  ├─ 📺 Manorama News (TV Broadcast with Lower-Third & Live Scrolling Ticker)
-  ├─ 🌐 Manorama Online (Malayalam Digital Web Portal)
-  ├─ 🌐 Onmanorama (English Digital Web Portal)
-  ├─ 📰 Malayala Manorama (Print - Malayalam Broadsheet)
-  └─ 📰 Malayala Manorama (Print - English Broadsheet)
-           │
-           ▼
-[Stage 8: Standalone HTML Export]
-  - Offline-ready, self-contained single .html document
-```
+The application includes realistic publication previews across four major mediums:
+
+1. **📺 Manorama News (TV Broadcast)**:
+   - Built to match **Reference Image 5**!
+   - Studio backdrop and anchor visual feed.
+   - White rounded logo badge on the left with the red/blue icon and Malayalam text **"സ്പീഡ് ന്യൂസ്"**.
+   - Red 3D chevron arrow: **`>>> SPEED NEWS`**.
+   - Big bold breaking headline bar.
+   - **Live scrolling news ticker bar** positioned directly below the logo with smooth marquee animation and Play/Pause control!
+2. **🌐 Digital News Website (Manorama Online & Onmanorama)**:
+   - Designed after **Reference Images 1 & 2**.
+   - Features red navigation bar, category tabs, breaking news flash strip, audio news badge, byline, and reading time.
+3. **📰 Newspaper Broadsheet**:
+   - Classic Malayala Manorama print broadsheet layout with authentic historic coat of arms masthead (`newspaper_malayalam.png` / `newspaper_english.png`) and 3-column layout.
+4. **📱 Mobile News App**:
+   - Designed after **Reference Image 4 (Onmanorama Mobile Showcase)**.
+   - Smartphone container with status bar, category pills (`ALL`, `KERALA`, `NEWS`, `TECH`), location tags, news image, and bookmark/share buttons.
 
 ---
 
-## 4. Brand Identity & Logo Assets
+## 3. Technology Stack
 
-The application strictly integrates original authentic branding assets supplied for the assessment:
-
-| Publication Medium | Authentic Asset Used | Display Context |
-| :--- | :--- | :--- |
-| **Manorama News (TV Broadcast)** | `/logos/manorama_news_logo.png` & `/logos/broadcast_reference.jpg` | Top corner bug, lower-third badge with "സ്പീഡ് ന്യൂസ്", red 3D chevron `>>> SPEED NEWS`, and animated scrolling news ticker below the logo. |
-| **Manorama Online (Malayalam Web)** | `/logos/manorama_online_logo.png` | Portal masthead with Malayalam category navigation bar, breaking news banner, and Anek Malayalam typography. |
-| **Onmanorama (English Web)** | `/logos/onmanorama_logo.png` | Clean digital portal header with reading-time metrics and tags. |
-| **Malayala Manorama (Print - Malayalam)** | `/logos/newspaper_malayalam.png` | Historic newspaper masthead with official coat of arms ("മലയാള മനോരമ - 1888-ൽ സ്ഥാപിതം") and broadsheet 3-column layout. |
-| **Malayala Manorama (Print - English)** | `/logos/newspaper_english.png` | Classic broadsheet masthead with coat of arms ("Malayala Manorama - Established 1888"). |
+- **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS 3.4, Lucide React.
+- **Backend:** Node.js v24 (ESM), Express 4, TypeScript 5 with `tsx`, Zod 3 validation.
+- **Fonts:** Google Fonts (`Anek Malayalam`, `Noto Serif Malayalam`, `Anek Devanagari`, `Anek Tamil`, `Anek Telugu`, `Inter`, `Merriweather`).
+- **AI Engine:** Google Gemini API (`gemini-2.5-flash`), with automated deterministic Demo Mode fallback for offline testing without an API key.
+- **NLP / Similarity:** Multilingual Cosine TF-IDF vectorizer preserving Indic Unicode scripts.
 
 ---
 
-## 5. Setup & Installation Guide
+## 4. Setup & Running Instructions
 
-### Prerequisites
-- **Node.js:** v18.0.0 or higher (v24 recommended)
-- **npm:** v9.0.0 or higher
-
-### Step 1: Clone and Navigate
-```bash
-cd c:\Users\HP\Documents\internship
-```
-
-### Step 2: Install All Dependencies
-```bash
-# Root dependencies
-npm install
-
-# Client dependencies
-npm --prefix client install
-
-# Server dependencies
-npm --prefix server install
-```
-
-### Step 3: Configure Environment (Optional for Live Gemini AI)
-Create a `.env` file in the `server/` directory:
-```bash
-cp server/.env.example server/.env
-```
-Open `server/.env` and insert your Gemini API Key:
-```env
-PORT=5000
-NODE_ENV=development
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-```
-*(Note: If no API key is provided, the application runs seamlessly in deterministic **Demo Mode** with realistic Kerala newsroom sample data).*
-
-### Step 4: Run Development Servers
-To run both backend (Port 5000) and frontend (Port 5173) simultaneously:
+### 1. Run Development Server
 ```bash
 npm run dev
 ```
-Or start them individually:
-```bash
-# Terminal 1: Backend
-npm run dev:server
+- **Frontend:** `http://localhost:5173`
+- **Backend:** `http://localhost:5000`
 
-# Terminal 2: Frontend
-npm run dev:client
-```
-Open your browser at: **`http://localhost:5173`**
-
----
-
-## 6. How to Test the Application
-
-### 1. Run Automated Unit & Integration Tests
-The backend test suite validates Zod input sanitization, multilingual Cosine TF-IDF similarity, prompt formatting, and HTML generation:
+### 2. Run Test Suite
 ```bash
 npm test
 ```
-All 7 test suites will execute and pass:
-```
-▶ Manorama AI Desk Full API Integration Suite
-  ✔ App instance initializes properly with router middleware
-  ✔ Standalone HTML generation test
-▶ Manorama AI Desk Backend & Logic Tests
-  ✔ Similarity engine calculates high score for identical stories
-  ✔ Similarity engine handles Malayalam Unicode text correctly
-  ✔ Input validation rejects empty or too short text
-  ✔ Input validation accepts valid Malayalam/English payload
-  ✔ Deterministic fallback produces well-structured Malayalam article
-```
+All 7 unit and integration tests validate input sanitization, multilingual generation, and HTML exports.
 
-### 2. Manual Verification Walkthrough
-1. **Load Pre-Loaded Sample:** Click any of the demonstration sample buttons in Stage 1 (e.g. *ISRO Chief Interview (English Transcript)* or *Wayanad Rehabilitation (Malayalam Notes)*).
-2. **Analyze Source:** Click **"Analyze Source & Extract Intelligence"**. Review the extracted 5Ws + 1H, names, places, organizations, numbers, and the *Unclear/Missing Information* box.
-3. **Generate Article:** Click **"Generate News Article"**. Notice the inverted pyramid lead paragraph and the 3 alternative headline options.
-4. **Source Fact Guard:** Inspect Stage 4/5. Review the factual fidelity score (e.g. 94%) and verify the side-by-side comparison between article statements and source excerpts.
-5. **Editorial Sub-Editing:** In Stage 5 (Editorial Studio), modify the headline or click **"⚡ Regenerate Headline"** or **"🎯 Polish Journalistic Tone"**. Use Undo/Redo to observe non-destructive editing.
-6. **Publication Preview:** In Stage 6, toggle between:
-   - **Manorama News (TV Broadcast):** Verify the studio visual, authentic logo card, "സ്പീഡ് ന്യൂസ്" badge, red 3D chevron arrow, and **animated scrolling news ticker tape** below the logo.
-   - **Manorama Online:** Verify Malayalam digital layout with authentic logo.
-   - **Onmanorama:** Verify English portal layout with authentic logo.
-   - **Malayala Manorama (Print ML & EN):** Verify authentic broadsheet mastheads with coat of arms.
-7. **Download Standalone HTML:** Click the green **"Download Standalone HTML"** button. Open the resulting `.html` file directly in any browser (even with WiFi disabled) to confirm offline formatting and Malayalam typography.
+### 3. Build for Production
+```bash
+npm run build
+```
 
 ---
 
-## 7. Assumptions, Limitations & Future Improvements
-
-### Assumptions
-- Source materials provided by reporters adhere to standard Malayalam or English script conventions.
-- When no Gemini API key is supplied, deterministic sample fixtures accurately simulate real API responses for demonstration.
-
-### Limitations
-- The offline HTML export relies on local system fonts (`Anek Malayalam`, `Segoe UI`, `system-ui`) when disconnected from the internet, falling back gracefully to OS default Malayalam fonts.
-- Duplicate detection uses tokenized Cosine TF-IDF; semantic dense embedding requires an active Gemini Embedding API endpoint (`text-embedding-004`).
-
-### Future Improvements
-- Direct CMS webhook integration to push edited articles directly into Manorama's editorial publishing pipeline.
-- Audio speech-to-text integration allowing journalists to upload raw MP3/WAV field interview recordings directly into Stage 1.
-- Automated AP/Malayalam stylebook linting rules for localized district terminology.
-
----
-
-## 8. License & Assessment Attribution
-Created for the **Software Engineer Intern Assessment** at Malayala Manorama. Code authored with strict adherence to maintainability, accessibility, and journalistic integrity standards.
+## 5. Standalone HTML Export (100% Offline Capable)
+Each language edition supports independent or batch export:
+- Click **"Download Standalone HTML"** or **"Download All 5 Languages"**.
+- Creates fully self-contained `.html` files with embedded CSS and zero CDN dependencies.
+- Opens flawlessly offline in any web browser with proper native Unicode font fallbacks.
