@@ -1,5 +1,5 @@
 import React from 'react';
-import { FactCheckResult, FactStatus } from '../types';
+import { FactCheckResult, FactStatus, Language } from '../types';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -7,18 +7,24 @@ import {
   XCircle,
   Info,
   HelpCircle,
-  ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from 'lucide-react';
 
 interface FactGuardProps {
   factCheck: FactCheckResult;
+  activeLanguage: Language;
+  onSelectLanguage: (lang: Language) => void;
+  availableLanguages: { code: Language; name: string; nativeName: string }[];
   onRecheck: () => void;
   isLoading: boolean;
 }
 
 export const FactGuard: React.FC<FactGuardProps> = ({
   factCheck,
+  activeLanguage,
+  onSelectLanguage,
+  availableLanguages,
   onRecheck,
   isLoading
 }) => {
@@ -59,39 +65,63 @@ export const FactGuard: React.FC<FactGuardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Language Switcher Bar */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-2">
+          <Globe className="w-4 h-4 text-red-600" />
+          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Auditing Language Edition:
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {availableLanguages.map(l => (
+            <button
+              key={l.code}
+              onClick={() => onSelectLanguage(l.code)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeLanguage === l.code
+                  ? 'bg-[#D9232D] text-white shadow-sm'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              <span>{l.name}</span>
+              <span className="opacity-75">({l.nativeName})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Top Banner & Integrity Score */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Stage 5: Source Fact Guard</span>
+              <span>Source Fact Guard &bull; {availableLanguages.find(l => l.code === activeLanguage)?.name} Audit</span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Factual Fidelity & Verification Engine
             </h2>
             <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-              Cross-examines each entity, metric, date, and statement in the generated article against the original source text.
+              Cross-examines each statement, proper noun, metric, date, and quote against the original source transcript.
             </p>
           </div>
 
-          <div className="flex items-center space-x-6 shrink-0">
-            {/* Score circle */}
-            <div className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="text-center">
-                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                  {summary.overallIntegrityScore}%
-                </div>
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Fidelity Score
-                </div>
+          <div className="flex items-center space-x-4 shrink-0">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center min-w-[110px]">
+              <div className="text-3xl font-black text-slate-900 tracking-tight">
+                {summary.overallIntegrityScore}%
+              </div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Fidelity Score
               </div>
             </div>
 
             <button
               onClick={onRecheck}
               disabled={isLoading}
-              className="p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium transition flex items-center space-x-1.5"
+              className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition flex items-center space-x-1.5"
               title="Re-run Verification"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -102,43 +132,43 @@ export const FactGuard: React.FC<FactGuardProps> = ({
 
         {/* Breakdown bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100">
-          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
-            <div className="text-xs font-bold text-emerald-800">Supported</div>
-            <div className="text-xl font-extrabold text-emerald-900">{summary.supportedCount}</div>
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+            <div className="text-xs font-bold text-emerald-800">Supported by Source</div>
+            <div className="text-xl font-black text-emerald-900">{summary.supportedCount}</div>
           </div>
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg">
-            <div className="text-xs font-bold text-amber-800">Needs Review</div>
-            <div className="text-xl font-extrabold text-amber-900">{summary.needsVerificationCount}</div>
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl">
+            <div className="text-xs font-bold text-amber-800">Needs Verification</div>
+            <div className="text-xl font-black text-amber-900">{summary.needsVerificationCount}</div>
           </div>
-          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-lg">
-            <div className="text-xs font-bold text-rose-800">Unsupported</div>
-            <div className="text-xl font-extrabold text-rose-900">{summary.unsupportedCount}</div>
+          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl">
+            <div className="text-xs font-bold text-rose-800">Potentially Unsupported</div>
+            <div className="text-xl font-black text-rose-900">{summary.unsupportedCount}</div>
           </div>
-          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg">
-            <div className="text-xs font-bold text-blue-800">Missing Details</div>
-            <div className="text-xl font-extrabold text-blue-900">{summary.missingDetailsCount}</div>
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
+            <div className="text-xs font-bold text-blue-800">Source Detail Missing</div>
+            <div className="text-xl font-black text-blue-900">{summary.missingDetailsCount}</div>
           </div>
         </div>
       </div>
 
       {/* Mandatory Journalistic Guardrail Disclaimer */}
-      <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-blue-900 text-xs flex items-start space-x-3">
+      <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 text-xs flex items-start space-x-3">
         <HelpCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
         <div>
-          <strong className="font-bold">Editorial Integrity Notice:</strong> Source Fact Guard checks strictly whether claims and entities are affirmed by the provided source text. It does not certify real-world truth or replace reporter diligence.
+          <strong className="font-bold">Editorial Integrity Notice:</strong> Source Fact Guard checks fidelity strictly against the supplied source text. It does not certify external real-world truth or replace reporter verification.
         </div>
       </div>
 
       {/* Detailed Fact Items */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Verified Cross-Check Items ({items.length})
+          Factual Audit Items ({items.length})
         </h3>
 
         {items.map((item, idx) => (
           <div
             key={item.id || idx}
-            className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3"
+            className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
@@ -152,7 +182,7 @@ export const FactGuard: React.FC<FactGuardProps> = ({
               <div>{getStatusBadge(item.status)}</div>
             </div>
 
-            {/* Source Reference & Explanation */}
+            {/* Source Reference & Findings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div>
                 <span className="font-bold text-slate-500 uppercase text-[10px] block mb-1">

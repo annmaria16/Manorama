@@ -7,28 +7,31 @@ export const sourceInputSchema = z.object({
     errorMap: () => ({ message: 'Invalid source type. Must be one of: transcript, notes, draft, brief' })
   }),
   sourceLanguage: z.string().min(2, 'Source language is required'),
-  targetLanguage: z.enum(['en', 'ml', 'hi'], {
-    errorMap: () => ({ message: 'Target language must be one of: en (English), ml (Malayalam), hi (Hindi)' })
-  }),
   articleStyle: z.enum(['standard', 'formal', 'feature'], {
     errorMap: () => ({ message: 'Article style must be one of: standard, formal, feature' })
   }),
   content: z.string()
     .min(25, 'Source content is too short. Please provide at least 25 characters of news material.')
     .max(50000, 'Source content exceeds maximum allowable length of 50,000 characters.'),
-  editorialInstructions: z.string().max(1000).optional()
+  editorialInstructions: z.string().max(1000).optional(),
+  targetLanguages: z.array(z.enum(['en', 'ml', 'hi', 'ta', 'te'])).optional(),
+  targetLanguage: z.enum(['en', 'ml', 'hi', 'ta', 'te']).optional()
+});
+
+export const singleLanguageSchema = sourceInputSchema.extend({
+  targetLanguage: z.enum(['en', 'ml', 'hi', 'ta', 'te'])
 });
 
 export const factCheckSchema = z.object({
   sourceContent: z.string().min(25, 'Source content required for verification.'),
   articleText: z.string().min(25, 'Article text required for verification.'),
-  targetLanguage: z.enum(['en', 'ml', 'hi'])
+  targetLanguage: z.enum(['en', 'ml', 'hi', 'ta', 'te'])
 });
 
 export const editorialRefineSchema = z.object({
   action: z.enum(['headline', 'tone', 'grammar', 'shorten', 'expand']),
   text: z.string().min(5, 'Text to refine must be at least 5 characters.'),
-  targetLanguage: z.enum(['en', 'ml', 'hi']),
+  targetLanguage: z.enum(['en', 'ml', 'hi', 'ta', 'te']),
   context: z.string().optional()
 });
 

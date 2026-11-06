@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { aiService } from '../services/aiService.js';
+import { aiService, ALL_LANGUAGES } from '../services/aiService.js';
 import {
   validateBody,
   sourceInputSchema,
+  singleLanguageSchema,
   factCheckSchema,
   editorialRefineSchema,
   similaritySchema
@@ -26,14 +27,10 @@ newsDeskRouter.get('/status', (req: Request, res: Response) => {
   res.json({
     status: 'online',
     appName: 'Manorama AI Desk',
-    version: '1.0.0',
+    version: '2.0.0-PRO',
     mode: isKeyConfigured ? 'live_ai' : 'demo_mode',
     configuredModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    supportedLanguages: [
-      { code: 'en', name: 'English', publication: 'Onmanorama' },
-      { code: 'ml', name: 'Malayalam (മലയാളം)', publication: 'Manorama Online / Malayala Manorama' },
-      { code: 'hi', name: 'Hindi (हिंदी)', publication: 'Manorama National' }
-    ],
+    supportedLanguages: ALL_LANGUAGES,
     timestamp: new Date().toISOString()
   });
 });
@@ -57,22 +54,52 @@ newsDeskRouter.post('/analyze', validateBody(sourceInputSchema), async (req: Req
   }
 });
 
-// Stage 3 & 4: Article Generation
-newsDeskRouter.post('/generate', validateBody(sourceInputSchema), async (req: Request, res: Response) => {
+// MAJOR MANDATORY FEATURE: AUTOMATIC MULTILINGUAL 5-LANGUAGE PIPELINE
+newsDeskRouter.post('/generate-multilingual', validateBody(sourceInputSchema), async (req: Request, res: Response) => {
   try {
     const clientKey = getApiKeyFromReq(req);
-    const analysis = req.body.analysis; // optional pre-extracted analysis passed from client
-    const article = await aiService.generateArticle(req.body, analysis, clientKey);
+    const preExtractedAnalysis = req.body.analysis;
+    const response = await aiService.generateAllLanguages(req.body, preExtractedAnalysis, clientKey);
+
     res.json({
       success: true,
-      data: article,
+      data: response
+    });
+  } catch (error: any) {
+    console.error('Error during multilingual generation:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate multilingual news articles.'
+    });
+  }
+});
+
+// RETRY / REGENERATE SINGLE LANGUAGE
+newsDeskRouter.post('/generate-single', validateBody(singleLanguageSchema), async (req: Request, res: Response) => {
+  try {
+    const clientKey = getApiKeyFromReq(req);
+    const targetLang = req.body.targetLanguage;
+    const analysis = req.body.analysis;
+
+    const article = await aiService.generateArticleForLanguage(req.body, targetLang, analysis, clientKey);
+    const fullArticleText = `${article.headline}\n\n${article.summary}\n\n${article.leadParagraph}\n\n${article.bodyParagraphs.join('\n\n')}`;
+    const factCheck = await aiService.checkFacts(req.body.content, fullArticleText, targetLang, clientKey);
+
+    res.json({
+      success: true,
+      data: {
+        language: targetLang,
+        article,
+        factCheck,
+        status: 'completed'
+      },
       isDemo: !aiService.isConfigured(clientKey)
     });
   } catch (error: any) {
-    console.error('Error during article generation:', error);
+    console.error('Error generating single language:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to generate news article.'
+      error: error.message || 'Failed to generate language version.'
     });
   }
 });
@@ -97,7 +124,7 @@ newsDeskRouter.post('/fact-check', validateBody(factCheckSchema), async (req: Re
   }
 });
 
-// Stage 6: Editorial Refinement
+// Editorial Refine
 newsDeskRouter.post('/refine', validateBody(editorialRefineSchema), async (req: Request, res: Response) => {
   try {
     const clientKey = getApiKeyFromReq(req);
@@ -116,7 +143,7 @@ newsDeskRouter.post('/refine', validateBody(editorialRefineSchema), async (req: 
   }
 });
 
-// Priority A/B: Duplicate Story & Cosine Similarity Detection
+// Duplicate Detection & Cosine Similarity
 newsDeskRouter.post('/similarity', validateBody(similaritySchema), (req: Request, res: Response) => {
   try {
     const { articleA, articleB } = req.body;

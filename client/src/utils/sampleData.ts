@@ -13,12 +13,12 @@ export const SAMPLE_STORIES: SampleStory[] = [
     label: 'ISRO Chief Interview (English Transcript)',
     sourceType: 'transcript',
     data: {
-      title: "Exclusive Interview with ISRO Chairman S. Somanath on Moon Sample Return",
+      title: "Exclusive Interview with ISRO Chairman S. Somanath on Moon Sample Return & Gaganyaan",
       sourceType: 'transcript',
       sourceLanguage: 'English',
-      targetLanguage: 'ml',
+      targetLanguages: ['en', 'ml', 'hi', 'ta', 'te'],
       articleStyle: 'standard',
-      editorialInstructions: "Focus on the 2028 timeline, docking technique, and Gaganyaan test updates. Adhere to Malayala Manorama editorial tone.",
+      editorialInstructions: "Focus on the 2028 timeline, docking technique, and Gaganyaan test updates. Adhere to professional regional broadsheet editorial conventions.",
       content: `INTERVIEW TRANSCRIPT
 Location: Vikram Sarabhai Space Centre (VSSC), Thiruvananthapuram
 Date: October 24
@@ -46,9 +46,9 @@ S. Somanath: "The Bharatiya Antariksha Station (BAS) first module will be deploy
       title: "വയനാട് ഉരുൾപൊട്ടൽ സമഗ്ര പുനരധിവാസ പദ്ധതി - അവലോകന യോഗം",
       sourceType: 'notes',
       sourceLanguage: 'Malayalam',
-      targetLanguage: 'en',
+      targetLanguages: ['en', 'ml', 'hi', 'ta', 'te'],
       articleStyle: 'formal',
-      editorialInstructions: "Structure into formal Onmanorama news report. Preserve financial figures, land area in hectares, and committee recommendations accurately.",
+      editorialInstructions: "Structure into formal news reports. Preserve financial figures, land area in hectares, and committee recommendations accurately.",
       content: `റിപ്പോർട്ടർ കുറിപ്പുകൾ: വയനാട് ദുരന്തബാധിത പുനരധിവാസം
 വേദി: തിരുവനന്തപുരം സെക്രട്ടേറിയറ്റ് കോൺഫറൻസ് ഹാൾ
 തീയതി: നവംബർ 4
@@ -72,9 +72,9 @@ S. Somanath: "The Bharatiya Antariksha Station (BAS) first module will be deploy
       title: "Kochi Water Metro Expands Operations to Infopark and Fort Kochi",
       sourceType: 'brief',
       sourceLanguage: 'English',
-      targetLanguage: 'ml',
+      targetLanguages: ['en', 'ml', 'hi', 'ta', 'te'],
       articleStyle: 'standard',
-      editorialInstructions: "Write in standard Malayala Manorama digital style. Mention passenger milestones, fleet additions, and environmental impact.",
+      editorialInstructions: "Highlight passenger milestones, electric vessel fleet additions, and environmental benefits.",
       content: `NEWS BRIEF:
 Kochi Water Metro, the country's first integrated water transport network, marked a new milestone on Tuesday with the induction of four new battery-electric hybrid vessels built by Cochin Shipyard Limited (CSL).
 
@@ -95,9 +95,9 @@ Key Facts:
       title: "Kerala Unveils Draft AI & DeepTech Mission with Rs 500 Cr Seed Fund",
       sourceType: 'draft',
       sourceLanguage: 'English',
-      targetLanguage: 'ml',
+      targetLanguages: ['en', 'ml', 'hi', 'ta', 'te'],
       articleStyle: 'feature',
-      editorialInstructions: "Draft feature style highlighting the technological transition, employment potential, and state backing.",
+      editorialInstructions: "Highlight technological transformation, compute access for students, and regional language AI.",
       content: `DRAFT ARTICLE:
 Kerala is gearing up for a significant digital transformation with the release of the draft Kerala AI Mission Policy 2025-2030. Announced at the Technopark campus in Thiruvananthapuram, the initiative seeks to establish the state as India's premier hub for ethical artificial intelligence and applied generative technology.
 

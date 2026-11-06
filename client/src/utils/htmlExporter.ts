@@ -9,10 +9,41 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const LANGUAGE_DETAILS: Record<Language, { name: string; nativeName: string; pubName: string; fontStack: string }> = {
+  ml: {
+    name: 'Malayalam',
+    nativeName: 'മലയാളം',
+    pubName: 'Manorama Online / മലയാള മനോരമ',
+    fontStack: '"Anek Malayalam", "Noto Serif Malayalam", "Manjari", "Gayathri", sans-serif'
+  },
+  en: {
+    name: 'English',
+    nativeName: 'English',
+    pubName: 'Onmanorama',
+    fontStack: 'Merriweather, Georgia, Cambria, "Times New Roman", serif'
+  },
+  hi: {
+    name: 'Hindi',
+    nativeName: 'हिंदी',
+    pubName: 'Manorama National Hindi',
+    fontStack: '"Anek Devanagari", "Noto Sans Devanagari", sans-serif'
+  },
+  ta: {
+    name: 'Tamil',
+    nativeName: 'தமிழ்',
+    pubName: 'Manorama Tamil Special',
+    fontStack: '"Anek Tamil", "Noto Sans Tamil", sans-serif'
+  },
+  te: {
+    name: 'Telugu',
+    nativeName: 'తెలుగు',
+    pubName: 'Manorama Telugu Special',
+    fontStack: '"Anek Telugu", "Noto Sans Telugu", sans-serif'
+  }
+};
+
 export function generateStandaloneHtml(article: GeneratedArticle): string {
-  const isMalayalam = article.targetLanguage === 'ml';
-  const langName = isMalayalam ? 'Malayalam' : article.targetLanguage === 'hi' ? 'Hindi' : 'English';
-  const publicationName = isMalayalam ? 'Manorama Online / മലയാള മനോരമ' : 'Onmanorama';
+  const meta = LANGUAGE_DETAILS[article.targetLanguage] || LANGUAGE_DETAILS.en;
   const dateStr = new Date(article.generatedAt || Date.now()).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
@@ -34,9 +65,9 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapedHeadline} | ${publicationName}</title>
+  <title>${escapedHeadline} | ${meta.pubName}</title>
   <meta name="description" content="${escapedSummary}">
-  <meta name="generator" content="Manorama AI Desk">
+  <meta name="generator" content="Manorama AI Desk Studio">
   <meta name="author" content="Manorama Special Bureau">
   <style>
     /* Standalone Offline CSS - Zero External Dependencies */
@@ -56,8 +87,8 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Anek Malayalam", "Manjari", "Gayathri", "Helvetica Neue", Arial, sans-serif;
-      line-height: 1.75;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ${meta.fontStack};
+      line-height: 1.8;
       color: var(--text-main);
       background-color: var(--bg-cream);
       padding: 0;
@@ -68,11 +99,11 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
     .top-bar {
       background-color: var(--primary-red);
       color: #ffffff;
-      padding: 12px 20px;
+      padding: 14px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
     }
 
     .brand-title {
@@ -80,66 +111,69 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
       font-weight: 800;
       letter-spacing: -0.5px;
       text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .brand-badge {
       font-size: 0.75rem;
       background: rgba(255, 255, 255, 0.2);
-      padding: 3px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
-      text-transform: uppercase;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
     .container {
-      max-width: 820px;
+      max-width: 840px;
       margin: 40px auto;
       background: #ffffff;
-      padding: 48px;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(15, 30, 54, 0.06);
+      padding: 50px;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(15, 30, 54, 0.07);
       border: 1px solid var(--border-color);
     }
 
     .article-meta-header {
       border-bottom: 2px solid var(--border-color);
-      padding-bottom: 20px;
-      margin-bottom: 28px;
+      padding-bottom: 24px;
+      margin-bottom: 30px;
     }
 
-    .category-pill {
+    .lang-pill {
       display: inline-block;
       background-color: #FEE2E2;
       color: var(--primary-red);
       font-size: 0.8rem;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 4px;
-      margin-bottom: 14px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 16px;
     }
 
     .headline {
       font-size: 2.25rem;
       font-weight: 800;
-      line-height: 1.25;
+      line-height: 1.3;
       color: var(--deep-navy);
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       letter-spacing: -0.5px;
     }
 
     .standfirst {
       font-size: 1.2rem;
       font-weight: 500;
-      line-height: 1.6;
+      line-height: 1.65;
       color: #334155;
       border-left: 4px solid var(--primary-red);
-      padding-left: 16px;
-      margin-bottom: 24px;
+      padding-left: 18px;
+      margin-bottom: 26px;
       background-color: #FFF5F5;
-      padding-top: 10px;
-      padding-bottom: 10px;
-      border-radius: 0 6px 6px 0;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      border-radius: 0 8px 8px 0;
     }
 
     .byline-row {
@@ -148,7 +182,7 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
       justify-content: space-between;
       font-size: 0.85rem;
       color: var(--text-muted);
-      padding-top: 12px;
+      padding-top: 14px;
       border-top: 1px dashed var(--border-color);
     }
 
@@ -160,27 +194,27 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
     .lead-paragraph {
       font-size: 1.25rem;
       font-weight: 600;
-      line-height: 1.75;
+      line-height: 1.8;
       color: #0F172A;
-      margin-bottom: 24px;
+      margin-bottom: 26px;
     }
 
     .body-p {
-      margin-bottom: 20px;
+      margin-bottom: 22px;
       text-align: justify;
       hyphens: auto;
     }
 
     .closing-p {
-      padding-top: 12px;
+      padding-top: 14px;
       border-top: 1px solid var(--border-color);
       font-style: italic;
       color: #475569;
     }
 
     .tags-container {
-      margin-top: 36px;
-      padding-top: 20px;
+      margin-top: 40px;
+      padding-top: 24px;
       border-top: 1px solid var(--border-color);
       display: flex;
       flex-wrap: wrap;
@@ -190,14 +224,14 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
     .tag {
       background: #F1F5F9;
       color: #475569;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 600;
     }
 
     .footer {
-      max-width: 820px;
+      max-width: 840px;
       margin: 20px auto 60px;
       text-align: center;
       font-size: 0.8rem;
@@ -227,7 +261,7 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
         margin: 16px 12px;
       }
       .headline {
-        font-size: 1.65rem;
+        font-size: 1.7rem;
       }
       .standfirst {
         font-size: 1.05rem;
@@ -237,20 +271,22 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
 </head>
 <body>
   <header class="top-bar">
-    <div class="brand-title">${publicationName}</div>
-    <div class="brand-badge">Manorama AI Desk &bull; Offline Edition</div>
+    <div class="brand-title">
+      <span>${meta.pubName}</span>
+    </div>
+    <div class="brand-badge">Manorama AI Desk &bull; ${meta.nativeName} Offline Edition</div>
   </header>
 
   <main class="container">
     <article>
       <header class="article-meta-header">
-        <span class="category-pill">${langName} Journalism</span>
+        <span class="lang-pill">${meta.name} (${meta.nativeName}) Journalism</span>
         <h1 class="headline">${escapedHeadline}</h1>
         <div class="standfirst">${escapedSummary}</div>
         <div class="byline-row">
-          <span><strong>Bureau:</strong> Manorama Special Newsroom</span>
+          <span><strong>Bureau:</strong> Manorama Multilingual Newsroom</span>
           <span><strong>Published:</strong> ${dateStr}</span>
-          <span><strong>Length:</strong> ${article.wordCount} words &bull; ${article.readingTimeMinutes} min read</span>
+          <span><strong>Metrics:</strong> ${article.wordCount} words &bull; ${article.readingTimeMinutes} min read</span>
         </div>
       </header>
 
@@ -268,8 +304,8 @@ export function generateStandaloneHtml(article: GeneratedArticle): string {
   </main>
 
   <footer class="footer">
-    <p>Generated by <strong>Manorama AI Desk</strong> &bull; Independent Newsroom Content Transformation Studio</p>
-    <p>Preserves authentic Malayalam & English journalistic conventions &bull; Standalone HTML export format</p>
+    <p>Generated by <strong>Manorama AI Desk</strong> &bull; Intelligent Multilingual Newsroom Studio</p>
+    <p>Preserves native journalistic conventions &bull; Standalone HTML offline format</p>
   </footer>
 </body>
 </html>`;
@@ -285,7 +321,7 @@ export function downloadStandaloneHtml(article: GeneratedArticle): void {
     .replace(/[^\w\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
-    .slice(0, 35) || 'news-article';
+    .slice(0, 30) || 'news-article';
 
   const filename = `manorama-${article.targetLanguage}-${safeTitle}-${Date.now().toString().slice(-4)}.html`;
 

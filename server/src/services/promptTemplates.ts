@@ -6,7 +6,6 @@ Your mission is to perform a rigorous, objective news intelligence extraction fr
 
 SOURCE TYPE: ${payload.sourceType}
 SOURCE LANGUAGE: ${payload.sourceLanguage}
-TARGET LANGUAGE: ${payload.targetLanguage}
 ${payload.title ? `SOURCE TITLE: ${payload.title}` : ''}
 ${payload.editorialInstructions ? `EDITORIAL INSTRUCTIONS: ${payload.editorialInstructions}` : ''}
 
@@ -43,7 +42,11 @@ Respond strictly with a valid JSON object matching this exact schema:
 }`;
 }
 
-export function buildArticleGenerationPrompt(payload: SourceInputPayload, analysisJson?: string): string {
+export function buildArticleGenerationPrompt(
+  payload: SourceInputPayload,
+  targetLang: Language,
+  analysisJson?: string
+): string {
   const languageInstructions: Record<Language, string> = {
     ml: `Generate the article strictly in natural, professional, publication-ready MALAYALAM (മലയാളം).
 Follow Malayala Manorama's editorial standards:
@@ -55,8 +58,17 @@ Follow Malayala Manorama's editorial standards:
 - Clear inverted pyramid lead paragraph.
 - Crisp, active voice, professional journalistic style.
 - Accurate quotes, attributions, designations, and numbers.`,
-    hi: `Generate the article strictly in standard, publication-ready Hindi journalism (हिंदी).
-- Standard Hindi news conventions and clear paragraph flow.`
+    hi: `Generate the article strictly in standard, publication-ready HINDI journalism (हिंदी).
+- Follow national broadsheet Hindi news conventions and clear paragraph flow.
+- Proper Hindi headline style and formal journalistic vocabulary.`,
+    ta: `Generate the article strictly in polished, publication-ready TAMIL journalism (தமிழ்).
+- Follow standard Tamil broadsheet news conventions (e.g. "தெரிவித்தார்", "குறிப்பிட்டார்", "அறிவித்தார்").
+- Transliterate proper nouns accurately into Tamil script.
+- Maintain formal, objective inverted-pyramid structure.`,
+    te: `Generate the article strictly in polished, publication-ready TELUGU journalism (తెలుగు).
+- Follow standard Telugu broadsheet news conventions (e.g. "వెల్లడించారు", "పేర్కొన్నారు", "స్పష్టం చేశారు").
+- Transliterate proper nouns accurately into Telugu script.
+- Maintain formal, objective inverted-pyramid structure.`
   };
 
   const styleInstructions: Record<ArticleStyle, string> = {
@@ -65,12 +77,12 @@ Follow Malayala Manorama's editorial standards:
     feature: `Style: FEATURE-STYLE ARTICLE. Engaging human-interest lead, rich contextual narrative, character focus, and thoughtful conclusion while keeping 100% of factual accuracy.`
   };
 
-  return `You are an elite Senior News Editor at Manorama AI Desk.
+  return `You are an elite Senior Multilingual News Editor at Manorama AI Desk.
 Generate a structured, publication-ready news article based EXCLUSIVELY on the provided source information.
 
-TARGET LANGUAGE: ${payload.targetLanguage} (${payload.targetLanguage === 'ml' ? 'Malayalam' : payload.targetLanguage === 'hi' ? 'Hindi' : 'English'})
+TARGET LANGUAGE: ${targetLang}
 ${styleInstructions[payload.articleStyle]}
-${languageInstructions[payload.targetLanguage]}
+${languageInstructions[targetLang]}
 
 ${payload.editorialInstructions ? `SPECIAL EDITORIAL INSTRUCTIONS: ${payload.editorialInstructions}` : ''}
 ${payload.title ? `PROPOSED WORKING TITLE: ${payload.title}` : ''}
@@ -110,15 +122,15 @@ Respond strictly with a valid JSON object matching this exact schema:
   "closingParagraph": "Concluding sentence or paragraph on next steps / ongoing investigation / follow up",
   "keywords": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "style": "${payload.articleStyle}",
-  "targetLanguage": "${payload.targetLanguage}",
-  "wordCount": 350,
+  "targetLanguage": "${targetLang}",
+  "wordCount": 320,
   "readingTimeMinutes": 2
 }`;
 }
 
 export function buildFactGuardPrompt(sourceContent: string, articleText: string, targetLanguage: Language): string {
   return `You are the Chief Fact & Verification Editor for Manorama AI Desk ("SOURCE FACT GUARD").
-Your job is to cross-examine a generated news article against the original source text.
+Your job is to cross-examine a generated news article in ${targetLanguage} against the original source text.
 
 SOURCE TEXT:
 \"\"\"

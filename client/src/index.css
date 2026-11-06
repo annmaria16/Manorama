@@ -9,7 +9,19 @@
 }
 
 .font-malayalam {
-  font-family: "Anek Malayalam", "Noto Serif Malayalam", "Manjari", "Gayathri", sans-serif;
+  font-family: "Anek Malayalam", "Noto Serif Malayalam", sans-serif;
+}
+
+.font-hindi {
+  font-family: "Anek Devanagari", sans-serif;
+}
+
+.font-tamil {
+  font-family: "Anek Tamil", sans-serif;
+}
+
+.font-telugu {
+  font-family: "Anek Telugu", sans-serif;
 }
 
 /* Continuous Marquee Ticker for Broadcast Mode */
@@ -24,7 +36,7 @@
 
 .animate-marquee {
   display: inline-flex;
-  animation: marquee 28s linear infinite;
+  animation: marquee 30s linear infinite;
 }
 
 .animate-marquee:hover {

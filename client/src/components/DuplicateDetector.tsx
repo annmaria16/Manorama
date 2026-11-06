@@ -140,3 +140,4 @@ export const DuplicateDetector: React.FC<DuplicateDetectorProps> = ({ currentArt
     </div>
   );
 };
+

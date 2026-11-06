@@ -1,15 +1,15 @@
 export type SourceType = 'transcript' | 'notes' | 'draft' | 'brief';
-export type Language = 'en' | 'ml' | 'hi';
+export type Language = 'en' | 'ml' | 'hi' | 'ta' | 'te';
 export type ArticleStyle = 'standard' | 'formal' | 'feature';
 
 export interface SourceInputPayload {
   title?: string;
   sourceType: SourceType;
   sourceLanguage: string;
-  targetLanguage: Language;
   articleStyle: ArticleStyle;
   content: string;
   editorialInstructions?: string;
+  targetLanguages?: Language[]; // defaults to all 5: ['en', 'ml', 'hi', 'ta', 'te']
 }
 
 export interface ExtractedEntities {
@@ -77,6 +77,23 @@ export interface FactCheckResult {
   };
   items: FactCheckItem[];
   checkedAt: string;
+}
+
+export interface LanguageGenerationStatus {
+  language: Language;
+  languageName: string;
+  nativeName: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+  article?: GeneratedArticle;
+  factCheck?: FactCheckResult;
+  error?: string;
+}
+
+export interface MultilingualGenerationResponse {
+  sourceAnalysis: SourceAnalysisResult;
+  results: Record<Language, LanguageGenerationStatus>;
+  generatedAt: string;
+  isDemo: boolean;
 }
 
 export interface EditorialRefinePayload {

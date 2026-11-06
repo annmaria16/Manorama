@@ -1,15 +1,15 @@
 export type SourceType = 'transcript' | 'notes' | 'draft' | 'brief';
-export type Language = 'en' | 'ml' | 'hi';
+export type Language = 'en' | 'ml' | 'hi' | 'ta' | 'te';
 export type ArticleStyle = 'standard' | 'formal' | 'feature';
 
 export interface SourceInputData {
   title: string;
   sourceType: SourceType;
   sourceLanguage: string;
-  targetLanguage: Language;
   articleStyle: ArticleStyle;
   content: string;
   editorialInstructions: string;
+  targetLanguages: Language[];
 }
 
 export interface FiveWsAndH {
@@ -79,6 +79,23 @@ export interface FactCheckResult {
   checkedAt: string;
 }
 
+export interface LanguageGenerationStatus {
+  language: Language;
+  languageName: string;
+  nativeName: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+  article?: GeneratedArticle;
+  factCheck?: FactCheckResult;
+  error?: string;
+}
+
+export interface MultilingualGenerationResponse {
+  sourceAnalysis: SourceAnalysisResult;
+  results: Record<Language, LanguageGenerationStatus>;
+  generatedAt: string;
+  isDemo: boolean;
+}
+
 export interface SimilarityResult {
   similarityScore: number;
   isDuplicate: boolean;
@@ -88,8 +105,16 @@ export interface SimilarityResult {
 }
 
 export type PublicationMode = 
+  | 'digital_web'       // Manorama Online / Onmanorama Web
   | 'tv_broadcast'      // Manorama News (Reference pic 5 with lower-third and ticker!)
-  | 'manorama_online'  // Malayalam Website
-  | 'onmanorama'       // English Website
-  | 'newspaper_ml'     // Malayala Manorama Malayalam Print Broadsheet
-  | 'newspaper_en';    // Malayala Manorama English Print Broadsheet
+  | 'newspaper_print'   // Malayala Manorama Broadsheet
+  | 'mobile_app';       // Mobile App Preview (Reference 4!)
+
+export type MainNavSection = 
+  | 'overview'
+  | 'create'
+  | 'multilingual'
+  | 'editor'
+  | 'preview'
+  | 'factguard'
+  | 'export';

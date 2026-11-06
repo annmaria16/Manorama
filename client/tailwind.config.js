@@ -10,18 +10,23 @@ export default {
         manorama: {
           red: '#D9232D',
           darkred: '#B71C1C',
-          lightred: '#FFEBEE',
+          lightred: '#FEE2E2',
           navy: '#0F1E36',
+          deepblue: '#0A1128',
           blue: '#19396D',
-          accent: '#0055A5',
+          sky: '#0055A5',
           gold: '#C59B27',
           gray: '#F8F9FA',
           border: '#E2E8F0',
         }
       },
       fontFamily: {
-        serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
-        malayalam: ['"Anek Malayalam"', '"Manjari"', '"Gayathri"', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['Merriweather', 'Georgia', 'Cambria', 'serif'],
+        malayalam: ['"Anek Malayalam"', '"Noto Serif Malayalam"', 'sans-serif'],
+        hindi: ['"Anek Devanagari"', 'sans-serif'],
+        tamil: ['"Anek Tamil"', 'sans-serif'],
+        telugu: ['"Anek Telugu"', 'sans-serif'],
       }
     },
   },

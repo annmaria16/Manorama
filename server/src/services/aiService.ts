@@ -4,6 +4,8 @@ import {
   GeneratedArticle,
   FactCheckResult,
   Language,
+  LanguageGenerationStatus,
+  MultilingualGenerationResponse,
   EditorialRefinePayload,
   SimilarityResult
 } from '../types.js';
@@ -14,13 +16,18 @@ import {
   buildRefinePrompt
 } from './promptTemplates.js';
 import {
-  MOCK_ANALYSIS_ML,
-  MOCK_ANALYSIS_EN,
-  MOCK_ARTICLE_ML,
-  MOCK_ARTICLE_EN,
-  MOCK_FACTCHECK_ML,
-  MOCK_FACTCHECK_EN
+  MOCK_ANALYSIS_COMMON,
+  MOCK_ARTICLES_BY_LANG,
+  MOCK_FACTCHECK_COMMON
 } from './mockData.js';
+
+export const ALL_LANGUAGES: { code: Language; name: string; nativeName: string }[] = [
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' }
+];
 
 export class AiService {
   private defaultApiKey: string;
@@ -67,7 +74,7 @@ export class AiService {
     };
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 40000);
 
     try {
       const response = await fetch(endpoint, {
@@ -105,11 +112,7 @@ export class AiService {
 
   public async analyzeSource(payload: SourceInputPayload, overrideApiKey?: string): Promise<SourceAnalysisResult> {
     if (!this.isConfigured(overrideApiKey)) {
-      // Deterministic demo mode
-      if (payload.targetLanguage === 'ml') {
-        return MOCK_ANALYSIS_ML;
-      }
-      return MOCK_ANALYSIS_EN;
+      return MOCK_ANALYSIS_COMMON;
     }
 
     const prompt = buildAnalysisPrompt(payload);
@@ -119,26 +122,29 @@ export class AiService {
       const parsed: SourceAnalysisResult = JSON.parse(cleaned);
       return parsed;
     } catch (err: any) {
-      console.warn('Real AI analysis failed, falling back to deterministic response:', err.message);
-      if (payload.targetLanguage === 'ml') return MOCK_ANALYSIS_ML;
-      return MOCK_ANALYSIS_EN;
+      console.warn('Real AI analysis failed, falling back to mock:', err.message);
+      return MOCK_ANALYSIS_COMMON;
     }
   }
 
-  public async generateArticle(
+  public async generateArticleForLanguage(
     payload: SourceInputPayload,
+    targetLang: Language,
     analysis?: SourceAnalysisResult,
     overrideApiKey?: string
   ): Promise<GeneratedArticle> {
     if (!this.isConfigured(overrideApiKey)) {
-      if (payload.targetLanguage === 'ml') {
-        return { ...MOCK_ARTICLE_ML, style: payload.articleStyle };
-      }
-      return { ...MOCK_ARTICLE_EN, style: payload.articleStyle };
+      const mock = MOCK_ARTICLES_BY_LANG[targetLang] || MOCK_ARTICLES_BY_LANG.en;
+      return {
+        ...mock,
+        style: payload.articleStyle,
+        targetLanguage: targetLang,
+        generatedAt: new Date().toISOString()
+      };
     }
 
     const analysisStr = analysis ? JSON.stringify(analysis, null, 2) : undefined;
-    const prompt = buildArticleGenerationPrompt(payload, analysisStr);
+    const prompt = buildArticleGenerationPrompt(payload, targetLang, analysisStr);
 
     try {
       const rawJson = await this.callGemini(prompt, overrideApiKey);
@@ -156,15 +162,20 @@ export class AiService {
       return {
         ...parsed,
         style: payload.articleStyle,
-        targetLanguage: payload.targetLanguage,
+        targetLanguage: targetLang,
         generatedAt: new Date().toISOString(),
         wordCount,
         readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 180))
       };
     } catch (err: any) {
-      console.warn('Real AI article generation failed, falling back to mock:', err.message);
-      if (payload.targetLanguage === 'ml') return { ...MOCK_ARTICLE_ML, style: payload.articleStyle };
-      return { ...MOCK_ARTICLE_EN, style: payload.articleStyle };
+      console.warn(`Article generation failed for ${targetLang}, falling back to mock:`, err.message);
+      const mock = MOCK_ARTICLES_BY_LANG[targetLang] || MOCK_ARTICLES_BY_LANG.en;
+      return {
+        ...mock,
+        style: payload.articleStyle,
+        targetLanguage: targetLang,
+        generatedAt: new Date().toISOString()
+      };
     }
   }
 
@@ -175,21 +186,80 @@ export class AiService {
     overrideApiKey?: string
   ): Promise<FactCheckResult> {
     if (!this.isConfigured(overrideApiKey)) {
-      if (targetLanguage === 'ml') return MOCK_FACTCHECK_ML;
-      return MOCK_FACTCHECK_EN;
+      return MOCK_FACTCHECK_COMMON;
     }
 
     const prompt = buildFactGuardPrompt(sourceContent, articleText, targetLanguage);
     try {
       const rawJson = await this.callGemini(prompt, overrideApiKey);
       const cleaned = this.cleanJsonString(rawJson);
-      const parsed: FactCheckResult = JSON.parse(cleaned);
-      return parsed;
+      return JSON.parse(cleaned);
     } catch (err: any) {
-      console.warn('Real AI fact guard failed, using rule-based fallback:', err.message);
-      if (targetLanguage === 'ml') return MOCK_FACTCHECK_ML;
-      return MOCK_FACTCHECK_EN;
+      console.warn('Real AI fact guard failed, using mock check:', err.message);
+      return MOCK_FACTCHECK_COMMON;
     }
+  }
+
+  // AUTOMATIC 5-LANGUAGE PIPELINE: SINGLE TRANSCRIPT -> 5 ARTICLES
+  public async generateAllLanguages(
+    payload: SourceInputPayload,
+    preExtractedAnalysis?: SourceAnalysisResult,
+    overrideApiKey?: string
+  ): Promise<MultilingualGenerationResponse> {
+    const isDemo = !this.isConfigured(overrideApiKey);
+    
+    // 1. First ensure source intelligence is extracted
+    const analysis = preExtractedAnalysis || await this.analyzeSource(payload, overrideApiKey);
+
+    const targetLangs: Language[] = payload.targetLanguages && payload.targetLanguages.length > 0
+      ? payload.targetLanguages
+      : ['en', 'ml', 'hi', 'ta', 'te'];
+
+    const results: Record<Language, LanguageGenerationStatus> = {} as any;
+
+    // Initialize statuses
+    ALL_LANGUAGES.forEach(lang => {
+      results[lang.code] = {
+        language: lang.code,
+        languageName: lang.name,
+        nativeName: lang.nativeName,
+        status: targetLangs.includes(lang.code) ? 'generating' : 'pending'
+      };
+    });
+
+    // 2. Execute generation for all 5 target languages from the SAME common source
+    await Promise.all(
+      targetLangs.map(async (lang) => {
+        try {
+          const article = await this.generateArticleForLanguage(payload, lang, analysis, overrideApiKey);
+          
+          // Cross-verify article against common source
+          const fullArticleText = `${article.headline}\n\n${article.summary}\n\n${article.leadParagraph}\n\n${article.bodyParagraphs.join('\n\n')}`;
+          const factCheck = await this.checkFacts(payload.content, fullArticleText, lang, overrideApiKey);
+
+          results[lang] = {
+            ...results[lang],
+            status: 'completed',
+            article,
+            factCheck
+          };
+        } catch (err: any) {
+          console.error(`Error generating ${lang} version:`, err);
+          results[lang] = {
+            ...results[lang],
+            status: 'failed',
+            error: err.message || `Failed to generate ${lang} article`
+          };
+        }
+      })
+    );
+
+    return {
+      sourceAnalysis: analysis,
+      results,
+      generatedAt: new Date().toISOString(),
+      isDemo
+    };
   }
 
   public async refineEditorial(
@@ -199,27 +269,17 @@ export class AiService {
     if (!this.isConfigured(overrideApiKey)) {
       if (payload.action === 'headline') {
         return {
-          refinedText: payload.targetLanguage === 'ml' 
-            ? "ചന്ദ്രയാൻ–4: 2028 വിക്ഷേപണത്തിലേക്ക് കുതിച്ച് ഇന്ത്യ"
-            : "Chandrayaan-4: India Accelerates Towards 2028 Lunar Launch",
+          refinedText: payload.text + ' — Updated',
           alternatives: [
-            payload.targetLanguage === 'ml' ? "ചന്ദ്രയാൻ-4 ലക്ഷ്യങ്ങൾ വ്യക്തമായി: ഐഎസ്ആർഒ" : "ISRO Seals Final Architecture for Chandrayaan-4",
-            payload.targetLanguage === 'ml' ? "ബഹിരാകാശത്ത് ഇന്ത്യയുടെ അടുത്ത വൻ കുതിപ്പ്" : "India Prepares Next Giant Leap in Space"
+            payload.text + ': Special Newsroom Edition',
+            'Breaking Report: ' + payload.text
           ],
-          changeSummary: "Made headline more dynamic, punchy, and newsroom-ready."
+          changeSummary: 'Refined headline for punchier, broadsheet newsroom impact.'
         };
       }
-
-      if (payload.action === 'shorten') {
-        return {
-          refinedText: payload.text.split('. ').slice(0, 2).join('. ') + '.',
-          changeSummary: "Trimmed non-essential phrasing while preserving primary facts and figures."
-        };
-      }
-
       return {
         refinedText: payload.text,
-        changeSummary: "Editorial review complete: tone and journalistic integrity verified."
+        changeSummary: 'Journalistic polish verified against news standards.'
       };
     }
 
@@ -228,20 +288,19 @@ export class AiService {
       const rawJson = await this.callGemini(prompt, overrideApiKey);
       const cleaned = this.cleanJsonString(rawJson);
       return JSON.parse(cleaned);
-    } catch (err: any) {
+    } catch {
       return {
         refinedText: payload.text,
-        changeSummary: "AI refinement completed with standard journalistic polish."
+        changeSummary: 'Refinement completed.'
       };
     }
   }
 
   public calculateSimilarity(articleA: string, articleB: string): SimilarityResult {
-    // Robust multilingual tokenization supporting English and Malayalam Unicode
     const tokenize = (text: string) => {
       return text
         .toLowerCase()
-        .replace(/[^\w\s\u0D00-\u0D7F]/gi, ' ')
+        .replace(/[^\w\s\u0D00-\u0D7F\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]/gi, ' ')
         .split(/\s+/)
         .filter(w => w.trim().length > 1);
     };
@@ -254,7 +313,7 @@ export class AiService {
         similarityScore: 0,
         isDuplicate: false,
         commonKeywords: [],
-        explanation: "One or both texts have insufficient word content to assess similarity.",
+        explanation: "One or both texts have insufficient content to evaluate similarity.",
         method: 'cosine_tfidf'
       };
     }
@@ -285,15 +344,15 @@ export class AiService {
 
     const cosineSim = (normA === 0 || normB === 0) ? 0 : dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     const rounded = Math.round(cosineSim * 100) / 100;
-    const isDuplicate = rounded >= 0.60;
+    const isDuplicate = rounded >= 0.55;
 
     return {
       similarityScore: rounded,
       isDuplicate,
       commonKeywords: common.slice(0, 8),
       explanation: isDuplicate 
-        ? `High semantic overlap (${Math.round(rounded * 100)}%). This story shares significant core narrative and key entities.`
-        : `Moderate or distinct story (${Math.round(rounded * 100)}% overlap). Acceptable for publishing.`,
+        ? `High semantic overlap (${Math.round(rounded * 100)}%). Significant shared narrative and facts.`
+        : `Distinct story (${Math.round(rounded * 100)}% overlap). Acceptable for independent publishing.`,
       method: 'cosine_tfidf'
     };
   }

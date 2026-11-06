@@ -4,7 +4,9 @@ import {
   GeneratedArticle,
   FactCheckResult,
   SimilarityResult,
-  Language
+  Language,
+  MultilingualGenerationResponse,
+  LanguageGenerationStatus
 } from '../types';
 
 const API_BASE = '/api';
@@ -54,11 +56,12 @@ export async function analyzeSource(data: SourceInputData): Promise<{ data: Sour
   return { data: body.data, isDemo: body.isDemo };
 }
 
-export async function generateArticle(
+// AUTOMATIC 5-LANGUAGE PIPELINE
+export async function generateMultilingual(
   data: SourceInputData,
   analysis?: SourceAnalysisResult
-): Promise<{ data: GeneratedArticle; isDemo: boolean }> {
-  const res = await fetch(`${API_BASE}/generate`, {
+): Promise<MultilingualGenerationResponse> {
+  const res = await fetch(`${API_BASE}/generate-multilingual`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ ...data, analysis })
@@ -66,7 +69,26 @@ export async function generateArticle(
 
   const body = await res.json();
   if (!res.ok || !body.success) {
-    throw new Error(body.error || 'Failed to generate news article');
+    throw new Error(body.error || 'Failed to generate multilingual news articles');
+  }
+  return body.data;
+}
+
+// RETRY A SINGLE LANGUAGE VERSION
+export async function retrySingleLanguage(
+  data: SourceInputData,
+  targetLanguage: Language,
+  analysis?: SourceAnalysisResult
+): Promise<{ data: LanguageGenerationStatus; isDemo: boolean }> {
+  const res = await fetch(`${API_BASE}/generate-single`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ ...data, targetLanguage, analysis })
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || `Failed to regenerate ${targetLanguage} article`);
   }
   return { data: body.data, isDemo: body.isDemo };
 }
