@@ -389,3 +389,4 @@ export const MultilingualStudio: React.FC<MultilingualStudioProps> = ({
     </div>
   );
 };
+

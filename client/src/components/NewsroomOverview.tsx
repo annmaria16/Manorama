@@ -237,3 +237,4 @@ export const NewsroomOverview: React.FC<NewsroomOverviewProps> = ({
     </div>
   );
 };
+
