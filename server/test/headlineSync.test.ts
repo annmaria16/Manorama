@@ -58,3 +58,4 @@ test('Dynamic Headline Synchronization: Heading changes when content changes', a
     `English headline should reflect the new content. Got: ${enArticle.headline}`
   );
 });
+
