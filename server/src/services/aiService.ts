@@ -15,11 +15,8 @@ import {
   buildFactGuardPrompt,
   buildRefinePrompt
 } from './promptTemplates.js';
-import {
-  MOCK_ANALYSIS_COMMON,
-  MOCK_ARTICLES_BY_LANG,
-  MOCK_FACTCHECK_COMMON
-} from './mockData.js';
+import { dynamicNlpEngine } from './dynamicNlpEngine.js';
+import { db } from '../db/database.js';
 
 export const ALL_LANGUAGES: { code: Language; name: string; nativeName: string }[] = [
   { code: 'en', name: 'English', nativeName: 'English' },
@@ -112,7 +109,7 @@ export class AiService {
 
   public async analyzeSource(payload: SourceInputPayload, overrideApiKey?: string): Promise<SourceAnalysisResult> {
     if (!this.isConfigured(overrideApiKey)) {
-      return MOCK_ANALYSIS_COMMON;
+      return dynamicNlpEngine.analyze(payload);
     }
 
     const prompt = buildAnalysisPrompt(payload);
@@ -122,8 +119,8 @@ export class AiService {
       const parsed: SourceAnalysisResult = JSON.parse(cleaned);
       return parsed;
     } catch (err: any) {
-      console.warn('Real AI analysis failed, falling back to mock:', err.message);
-      return MOCK_ANALYSIS_COMMON;
+      console.warn('Real AI analysis failed, falling back to dynamic NLP engine:', err.message);
+      return dynamicNlpEngine.analyze(payload);
     }
   }
 
@@ -134,13 +131,7 @@ export class AiService {
     overrideApiKey?: string
   ): Promise<GeneratedArticle> {
     if (!this.isConfigured(overrideApiKey)) {
-      const mock = MOCK_ARTICLES_BY_LANG[targetLang] || MOCK_ARTICLES_BY_LANG.en;
-      return {
-        ...mock,
-        style: payload.articleStyle,
-        targetLanguage: targetLang,
-        generatedAt: new Date().toISOString()
-      };
+      return dynamicNlpEngine.generateArticle(payload, targetLang, analysis);
     }
 
     const analysisStr = analysis ? JSON.stringify(analysis, null, 2) : undefined;
@@ -168,14 +159,8 @@ export class AiService {
         readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 180))
       };
     } catch (err: any) {
-      console.warn(`Article generation failed for ${targetLang}, falling back to mock:`, err.message);
-      const mock = MOCK_ARTICLES_BY_LANG[targetLang] || MOCK_ARTICLES_BY_LANG.en;
-      return {
-        ...mock,
-        style: payload.articleStyle,
-        targetLanguage: targetLang,
-        generatedAt: new Date().toISOString()
-      };
+      console.warn(`Article generation failed for ${targetLang}, falling back to dynamic NLP engine:`, err.message);
+      return dynamicNlpEngine.generateArticle(payload, targetLang, analysis);
     }
   }
 
@@ -186,7 +171,7 @@ export class AiService {
     overrideApiKey?: string
   ): Promise<FactCheckResult> {
     if (!this.isConfigured(overrideApiKey)) {
-      return MOCK_FACTCHECK_COMMON;
+      return dynamicNlpEngine.checkFacts(sourceContent, articleText, targetLanguage);
     }
 
     const prompt = buildFactGuardPrompt(sourceContent, articleText, targetLanguage);
@@ -195,8 +180,8 @@ export class AiService {
       const cleaned = this.cleanJsonString(rawJson);
       return JSON.parse(cleaned);
     } catch (err: any) {
-      console.warn('Real AI fact guard failed, using mock check:', err.message);
-      return MOCK_FACTCHECK_COMMON;
+      console.warn('Real AI fact guard failed, using dynamic NLP check:', err.message);
+      return dynamicNlpEngine.checkFacts(sourceContent, articleText, targetLanguage);
     }
   }
 
@@ -208,7 +193,13 @@ export class AiService {
   ): Promise<MultilingualGenerationResponse> {
     const isDemo = !this.isConfigured(overrideApiKey);
     
-    // 1. First ensure source intelligence is extracted
+    // Save raw source document to persistent database
+    const sourceId = db.saveSource(payload);
+
+    // Create unique story entry in database
+    const storyId = db.createStory(sourceId, payload.articleStyle);
+
+    // 1. First ensure source intelligence is extracted from user's submitted content
     const analysis = preExtractedAnalysis || await this.analyzeSource(payload, overrideApiKey);
 
     const targetLangs: Language[] = payload.targetLanguages && payload.targetLanguages.length > 0
@@ -254,7 +245,12 @@ export class AiService {
       })
     );
 
+    // Persist all 5 language articles & fact checks in database
+    db.saveStoryLanguages(storyId, results);
+
     return {
+      storyId,
+      sourceId,
       sourceAnalysis: analysis,
       results,
       generatedAt: new Date().toISOString(),

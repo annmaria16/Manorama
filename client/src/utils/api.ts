@@ -143,3 +143,42 @@ export async function checkSimilarity(articleA: string, articleB: string): Promi
   }
   return body.data;
 }
+
+// DATABASE PERSISTENCE API CALLS
+export async function fetchStories(): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/stories`, {
+    headers: getHeaders()
+  });
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || 'Failed to fetch saved stories');
+  }
+  return body.data;
+}
+
+export async function fetchStory(storyId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/stories/${storyId}`, {
+    headers: getHeaders()
+  });
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || `Failed to fetch story ${storyId}`);
+  }
+  return body.data;
+}
+
+export async function updateArticleInDb(
+  storyId: string,
+  language: Language,
+  article: GeneratedArticle
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/stories/${storyId}/languages/${language}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(article)
+  });
+  const body = await res.json();
+  if (!res.ok || !body.success) {
+    throw new Error(body.error || `Failed to update ${language} article in database`);
+  }
+}

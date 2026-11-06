@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { aiService, ALL_LANGUAGES } from '../services/aiService.js';
+import { db } from '../db/database.js';
 import {
   validateBody,
   sourceInputSchema,
@@ -157,6 +158,64 @@ newsDeskRouter.post('/similarity', validateBody(similaritySchema), (req: Request
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to calculate similarity.'
+    });
+  }
+});
+
+// Database: List all stories
+newsDeskRouter.get('/stories', (_req: Request, res: Response) => {
+  try {
+    const stories = db.listAllStories();
+    res.json({
+      success: true,
+      data: stories
+    });
+  } catch (error: any) {
+    console.error('Error listing stories:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to list stories from database.'
+    });
+  }
+});
+
+// Database: Get a single story by ID with all articles & fact-checks
+newsDeskRouter.get('/stories/:storyId', (req: Request, res: Response) => {
+  try {
+    const story = db.getStory(req.params.storyId);
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        error: `Story with ID ${req.params.storyId} not found.`
+      });
+    }
+    res.json({
+      success: true,
+      data: story
+    });
+  } catch (error: any) {
+    console.error('Error retrieving story:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to retrieve story from database.'
+    });
+  }
+});
+
+// Database: Save user edits for a specific language
+newsDeskRouter.put('/stories/:storyId/languages/:lang', (req: Request, res: Response) => {
+  try {
+    const { storyId, lang } = req.params;
+    db.updateArticle(storyId, lang as any, req.body);
+    res.json({
+      success: true,
+      message: `Updated ${lang} article in story ${storyId}`
+    });
+  } catch (error: any) {
+    console.error('Error updating article:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update article in database.'
     });
   }
 });

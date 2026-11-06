@@ -10,7 +10,8 @@ import {
   Calendar,
   Globe,
   Radio,
-  ExternalLink
+  ExternalLink,
+  Database
 } from 'lucide-react';
 import { MainNavSection } from '../types';
 
@@ -21,6 +22,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onReset: () => void;
   hasArticles: boolean;
+  onOpenSavedStories?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,7 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   isDemo,
   onOpenSettings,
   onReset,
-  hasArticles
+  hasArticles,
+  onOpenSavedStories
 }) => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -141,6 +144,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right side actions */}
         <div className="flex items-center space-x-3">
+          {onOpenSavedStories && (
+            <button
+              onClick={onOpenSavedStories}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition flex items-center space-x-1.5"
+              title="Browse Stored Stories"
+            >
+              <Database className="w-3.5 h-3.5 text-[#0F1E36]" />
+              <span className="hidden sm:inline">Story Archive</span>
+            </button>
+          )}
+
           <button
             onClick={onReset}
             className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition flex items-center space-x-1.5"

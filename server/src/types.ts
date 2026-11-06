@@ -90,6 +90,8 @@ export interface LanguageGenerationStatus {
 }
 
 export interface MultilingualGenerationResponse {
+  storyId?: string;
+  sourceId?: string;
   sourceAnalysis: SourceAnalysisResult;
   results: Record<Language, LanguageGenerationStatus>;
   generatedAt: string;

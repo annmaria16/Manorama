@@ -90,10 +90,27 @@ export interface LanguageGenerationStatus {
 }
 
 export interface MultilingualGenerationResponse {
+  storyId?: string;
+  sourceId?: string;
   sourceAnalysis: SourceAnalysisResult;
   results: Record<Language, LanguageGenerationStatus>;
   generatedAt: string;
   isDemo: boolean;
+}
+
+export interface SavedStorySummary {
+  story_id: string;
+  source_id: string;
+  style: string;
+  title: string;
+  source_type: string;
+  source_language: string;
+  content_preview: string;
+  language_count: number;
+  headline_en?: string;
+  headline_ml?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SimilarityResult {

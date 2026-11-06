@@ -11,6 +11,7 @@ import { ExportCenter } from './components/ExportCenter';
 import { HeadlineStudio } from './components/HeadlineStudio';
 import { DuplicateDetector } from './components/DuplicateDetector';
 import { SettingsModal } from './components/SettingsModal';
+import { SavedStoriesModal } from './components/SavedStoriesModal';
 import {
   MainNavSection,
   SourceInputData,
@@ -25,7 +26,8 @@ import {
   generateMultilingual,
   retrySingleLanguage,
   checkFacts,
-  fetchSystemStatus
+  fetchSystemStatus,
+  updateArticleInDb
 } from './utils/api';
 import { AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
 
@@ -40,6 +42,7 @@ const AVAILABLE_LANGUAGES: { code: Language; name: string; nativeName: string }[
 export function App() {
   const [currentSection, setCurrentSection] = useState<MainNavSection>('overview');
   const [activeLanguage, setActiveLanguage] = useState<Language>('ml');
+  const [activeStoryId, setActiveStoryId] = useState<string | undefined>(undefined);
 
   const [sourceData, setSourceData] = useState<SourceInputData>(SAMPLE_STORIES[0].data);
   const [analysis, setAnalysis] = useState<SourceAnalysisResult | null>(null);
@@ -52,6 +55,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean>(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState<boolean>(false);
 
   const checkStatus = () => {
     fetchSystemStatus()
@@ -97,6 +101,7 @@ export function App() {
       const res = await generateMultilingual(sourceData, analysis || undefined);
       setAnalysis(res.sourceAnalysis);
       setMultilingualResults(res.results);
+      setActiveStoryId(res.storyId);
       setIsDemo(res.isDemo);
       setCurrentSection('multilingual');
     } catch (err: any) {
@@ -124,7 +129,7 @@ export function App() {
     }
   };
 
-  // 4. Update an article in state after user edits
+  // 4. Update an article in state and persist to database
   const handleUpdateArticle = (lang: Language, updated: GeneratedArticle) => {
     setMultilingualResults(prev => ({
       ...prev,
@@ -133,6 +138,34 @@ export function App() {
         article: updated
       }
     }));
+
+    // Persist user modifications to database
+    if (activeStoryId) {
+      updateArticleInDb(activeStoryId, lang, updated).catch(err => {
+        console.warn('Could not persist edit to database:', err);
+      });
+    }
+  };
+
+  // 5. Load a saved story from database archive
+  const handleSelectSavedStory = (storyData: any) => {
+    if (!storyData) return;
+    setActiveStoryId(storyData.storyId);
+    if (storyData.source) {
+      setSourceData({
+        title: storyData.source.title || '',
+        sourceType: storyData.source.sourceType || 'transcript',
+        sourceLanguage: storyData.source.sourceLanguage || 'en',
+        articleStyle: storyData.source.style || 'standard',
+        content: storyData.source.content || '',
+        editorialInstructions: storyData.source.editorialInstructions || '',
+        targetLanguages: ['en', 'ml', 'hi', 'ta', 'te']
+      });
+    }
+    if (storyData.results) {
+      setMultilingualResults(storyData.results);
+    }
+    setCurrentSection('multilingual');
   };
 
   // 5. Recheck facts for the active language
@@ -188,6 +221,7 @@ export function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onReset={handleReset}
         hasArticles={hasArticles}
+        onOpenSavedStories={() => setIsArchiveOpen(true)}
       />
 
       {/* Main Newsroom Workspace Container */}
@@ -364,6 +398,14 @@ export function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onKeyUpdated={checkStatus}
+      />
+
+      {/* Database Saved Stories Modal */}
+      <SavedStoriesModal
+        isOpen={isArchiveOpen}
+        onClose={() => setIsArchiveOpen(false)}
+        onSelectStory={handleSelectSavedStory}
+        activeStoryId={activeStoryId}
       />
     </div>
   );

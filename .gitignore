@@ -24,4 +24,6 @@ Thumbs.db
 # Temp & Artifacts
 temp/
 coverage/
+server/data/
+*.sqlite*
 
